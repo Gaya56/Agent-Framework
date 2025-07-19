@@ -43,6 +43,7 @@ dependencies = [
     "numpy ~=1.26.4; python_version <= '3.12'",
     "numpy ~=2.2.3; python_version >= '3.13'",
     "onnxruntime ~= 1.21.1",
+    "openai ~=1.97.0",
     "pandas ~=2.2.3",
     "psycopg[binary,pool] ~=3.2.4",
     "pyarrow >=18.1.0",
@@ -52,10 +53,10 @@ dependencies = [
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
     "setuptools ~=75.6.0",
-    "streamlit ~=1.40.1",
+    "streamlit~=1.40.1",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
-
+    "mcp>=1.12.0",
 ]
 
 [dependency-groups]
@@ -78,6 +79,9 @@ client = [
     "pydantic ~=2.10.1",
     "python-dotenv ~=1.0.1",
     "streamlit~=1.40.1",
+    "mcp",
+    "aiohttp",
+    "openai",
 ]
 
 [tool.ruff]

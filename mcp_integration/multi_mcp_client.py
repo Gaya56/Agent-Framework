@@ -1,0 +1,306 @@
+"""
+Multi-server MCP Client that can manage multiple MCP servers.
+This replaces the single working_mcp_client with a flexible multi-server approach.
+"""
+import asyncio
+from typing import Any
+
+from config import get_enabled_servers
+
+
+class MCPServerClient:
+    """Individual MCP server client (similar to WorkingMCPClient but server-specific)"""
+    
+    def __init__(self, server_id: str, config: dict[str, Any]):
+        self.server_id = server_id
+        self.config = config
+        self.container_name = config["container_name"]
+        self.server_path = config["server_path"]
+        self.is_initialized = False
+        
+    async def initialize(self) -> bool:
+        """Initialize connection to MCP container"""
+        try:
+            print(f"🔄 Initializing {self.config['name']}...")
+            print(f"   Container: {self.container_name}")
+            print(f"   Base Path: {self.server_path}")
+            
+            # Test container accessibility
+            result = await self._run_docker_command(["ls", "-la", self.server_path])
+            
+            if result["success"]:
+                print(f"✅ {self.config['name']} connection successful")
+                self.is_initialized = True
+                return True
+            else:
+                print(f"❌ {self.config['name']} connection failed: {result['error']}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ {self.config['name']} initialization failed: {e}")
+            return False
+    
+    async def _run_docker_command(self, command: list[str]) -> dict[str, Any]:
+        """Execute command in docker container"""
+        try:
+            full_command = ["docker", "exec", self.container_name] + command
+            
+            # Run command asynchronously
+            process = await asyncio.create_subprocess_exec(
+                *full_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            return {
+                "success": process.returncode == 0,
+                "output": stdout.decode('utf-8', errors='replace'),
+                "error": stderr.decode('utf-8', errors='replace'),
+                "returncode": process.returncode
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Command execution failed: {e}",
+                "returncode": -1
+            }
+    
+    def _safe_path(self, path: str) -> str:
+        """Ensure path is safe and within server boundaries"""
+        if not path.startswith('/'):
+            path = f"{self.server_path}/{path}"
+        
+        # Basic path safety (expand this as needed)
+        path = path.replace('..', '')
+        return path
+    
+    def get_available_tools(self) -> dict[str, dict[str, Any]]:
+        """Get tools available for this server"""
+        return self.config.get("tools", {})
+    
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute MCP tool via docker commands"""
+        if not self.is_initialized:
+            return {"error": f"{self.config['name']} not initialized"}
+        
+        available_tools = self.get_available_tools()
+        if tool_name not in available_tools:
+            return {"error": f"Unknown tool '{tool_name}' for {self.config['name']}"}
+        
+        try:
+            # For now, only implement filesystem tools since that's what we have
+            if self.server_id == "filesystem":
+                return await self._call_filesystem_tool(tool_name, arguments)
+            else:
+                return {"error": f"Tool execution not yet implemented for {self.config['name']}"}
+                
+        except Exception as e:
+            return {"error": f"Tool execution failed: {str(e)}"}
+    
+    async def _call_filesystem_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute filesystem-specific tools"""
+        if tool_name == "list_directory":
+            path = self._safe_path(arguments.get("path", self.server_path))
+            result = await self._run_docker_command(["ls", "-la", path])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Directory listing for {path}:\n{result['output']}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to list directory: {result['error']}"}
+        
+        elif tool_name == "read_file":
+            path = self._safe_path(arguments.get("path", ""))
+            result = await self._run_docker_command(["cat", path])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text", 
+                        "text": f"Contents of {path}:\n{result['output']}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to read file: {result['error']}"}
+        
+        elif tool_name == "write_file":
+            path = self._safe_path(arguments.get("path", ""))
+            content = arguments.get("content", "")
+            
+            # Use echo to write content (better than cat << EOF for simple content)
+            result = await self._run_docker_command([
+                "sh", "-c", f"echo '{content}' > '{path}'"
+            ])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Successfully wrote to {path}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to write file: {result['error']}"}
+        
+        elif tool_name == "create_directory":
+            path = self._safe_path(arguments.get("path", ""))
+            result = await self._run_docker_command(["mkdir", "-p", path])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Successfully created directory {path}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to create directory: {result['error']}"}
+        
+        elif tool_name == "move_file":
+            source = self._safe_path(arguments.get("source", ""))
+            destination = self._safe_path(arguments.get("destination", ""))
+            result = await self._run_docker_command(["mv", source, destination])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Successfully moved {source} to {destination}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to move file: {result['error']}"}
+        
+        elif tool_name == "get_file_info":
+            path = self._safe_path(arguments.get("path", ""))
+            result = await self._run_docker_command(["stat", path])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"File info for {path}:\n{result['output']}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to get file info: {result['error']}"}
+        
+        elif tool_name == "search_files":
+            pattern = arguments.get("pattern", "*")
+            search_path = self._safe_path(arguments.get("path", self.server_path))
+            result = await self._run_docker_command(["find", search_path, "-name", pattern])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Search results for '{pattern}' in {search_path}:\n{result['output']}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to search files: {result['error']}"}
+        
+        elif tool_name == "directory_tree":
+            path = self._safe_path(arguments.get("path", self.server_path))
+            max_depth = arguments.get("max_depth", 3)
+            result = await self._run_docker_command(["find", path, "-maxdepth", str(max_depth), "-type", "d"])
+            
+            if result["success"]:
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": f"Directory tree for {path} (max depth {max_depth}):\n{result['output']}"
+                    }]
+                }
+            else:
+                return {"error": f"Failed to get directory tree: {result['error']}"}
+        
+        else:
+            return {"error": f"Unknown filesystem tool: {tool_name}"}
+
+
+class MultiMCPClient:
+    """
+    Multi-server MCP client that manages multiple MCP servers.
+    Provides a unified interface for server selection and tool execution.
+    """
+    
+    def __init__(self):
+        self.servers: dict[str, MCPServerClient] = {}
+        self.is_initialized = False
+        
+    async def initialize(self) -> bool:
+        """Initialize all enabled MCP servers"""
+        try:
+            print("🔄 Initializing Multi-MCP Client...")
+            
+            enabled_servers = get_enabled_servers()
+            if not enabled_servers:
+                print("⚠️ No enabled MCP servers found")
+                return False
+            
+            # Initialize each server
+            for server_id, config in enabled_servers.items():
+                server_client = MCPServerClient(server_id, config)
+                success = await server_client.initialize()
+                
+                if success:
+                    self.servers[server_id] = server_client
+                    print(f"✅ {config['name']} ready")
+                else:
+                    print(f"❌ {config['name']} failed to initialize")
+            
+            if self.servers:
+                print(f"✅ Multi-MCP Client initialized with {len(self.servers)} servers")
+                self.is_initialized = True
+                return True
+            else:
+                print("❌ No MCP servers successfully initialized")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Multi-MCP Client initialization failed: {e}")
+            return False
+    
+    def get_available_servers(self) -> dict[str, dict[str, Any]]:
+        """Get all available/initialized servers"""
+        return {
+            server_id: {
+                "name": server.config["name"],
+                "description": server.config["description"], 
+                "icon": server.config["icon"],
+                "tools": list(server.get_available_tools().keys())
+            }
+            for server_id, server in self.servers.items()
+        }
+    
+    def get_server_tools(self, server_id: str) -> dict[str, dict[str, Any]]:
+        """Get tools available for a specific server"""
+        if server_id in self.servers:
+            return self.servers[server_id].get_available_tools()
+        return {}
+    
+    async def call_tool(self, server_id: str, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute tool on specific server"""
+        if not self.is_initialized:
+            return {"error": "Multi-MCP Client not initialized"}
+        
+        if server_id not in self.servers:
+            available = list(self.servers.keys())
+            return {"error": f"Server '{server_id}' not available. Available servers: {available}"}
+        
+        return await self.servers[server_id].call_tool(tool_name, arguments)
+    
+    async def close(self):
+        """Clean up resources"""
+        # For now, no cleanup needed as we use docker exec
+        # Future servers might need connection cleanup
+        pass
