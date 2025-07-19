@@ -1,16 +1,36 @@
-# MCP Integration - Standalone
+# MCP Integration - Multi-Server Architecture
 
-This directory contains a standalone MCP (Model Context Protocol) integration that demonstrates how to connect AI agents to MCP servers.
+This directory contains a **production-ready MCP (Model Context Protocol) integration** that demonstrates how to connect AI agents to multiple MCP servers using a plug-and-play architecture.
 
-## Files
+## 🚀 **Current Status: WORKING**
 
-- `mcp_client.py` - Simple MCP client for connecting to filesystem server
-- `mcp_openai_bot.py` - OpenAI bot that can use MCP filesystem tools  
-- `mcp_tab.py` - Streamlit UI tab for MCP functionality
-- `schema.py` - Standalone schema definitions (ChatMessage, etc.)
-- `config.py` - Configuration and environment variable loading
-- `test_mcp.py` - Test script for the integration
-- `requirements.txt` - Python dependencies
+✅ **Streamlit Integration** - MCP tab fully integrated into main app  
+✅ **Filesystem Server** - 8 tools working perfectly  
+✅ **Docker Exec Approach** - Reliable, no asyncio issues  
+✅ **Multi-Server Ready** - Architecture supports unlimited servers  
+
+## 📁 **Files**
+
+### **Core Components:**
+- **`multi_mcp_client.py`** - Multi-server MCP client manager ✅ PRODUCTION READY
+- **`config.py`** - Dynamic server configuration system ✅ PRODUCTION READY  
+- **`mcp_tab.py`** - Streamlit UI tab for MCP functionality ✅ PRODUCTION READY
+
+### **Legacy/Reference:**
+- **`working_mcp_client.py`** - Single-server reference implementation
+- **`mcp_openai_bot_v2.py`** - OpenAI bot integration example  
+
+## 🏗️ **Architecture Overview**
+
+```
+Streamlit App
+├── 💬 Chat Tab (LangGraph Agents)
+└── 📁 MCP Tab (Multi-Server Interface)
+    ├── 📁 Filesystem Server (agent-framework-mcp-filesystem-1)
+    ├── 🧠 Memory Server (future: agent-framework-mcp-memory-1)  
+    ├── 🔍 Search Server (future: agent-framework-mcp-search-1)
+    └── 🔌 Custom Servers (plug-and-play)
+```
 
 ## Setup
 
@@ -76,14 +96,30 @@ await render_mcp_tab()
 
 ## Docker Container
 
-The integration connects to the `mcp-filesystem` container defined in the parent `compose.yaml`:
-- Container name: `agent-service-toolkit-mcp-filesystem-1`
-- Filesystem path: `/projects`
-- Available tools: 11 filesystem operations
+The integration connects to MCP containers defined in the parent `compose.yaml`:
+
+- **Current:** `agent-framework-mcp-filesystem-1` 
+  - Filesystem path: `/projects`
+  - Available tools: 8 filesystem operations
+- **Future:** Additional servers will follow the same pattern
 
 ## Configuration
 
 Environment variables (loaded from parent `.env`):
+
 - `OPENAI_API_KEY` - Required for OpenAI bot
-- `MCP_CONTAINER_NAME` - Docker container name (default: agent-service-toolkit-mcp-filesystem-1)
+- `MCP_CONTAINER_NAME` - Docker container name pattern
 - `MCP_SERVER_PATH` - Server filesystem path (default: /projects)
+
+## 🎯 **Next: Plug & Play Architecture**
+
+**Goal:** Add new MCP servers by simply:
+1. Creating a new directory in `/servers/`
+2. Adding Docker container config
+3. Server auto-discovered and available immediately
+
+**Target Servers:**
+- 🧠 **Memory Server** - Knowledge graph and embeddings
+- 🔍 **Search Server** - Web search and information retrieval  
+- 💾 **Database Server** - SQL operations and queries
+- 📧 **Email Server** - Send/receive email functionality

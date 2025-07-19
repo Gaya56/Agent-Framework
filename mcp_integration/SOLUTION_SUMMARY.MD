@@ -1,15 +1,23 @@
 # MCP Integration Solution Summary
 
-## 🎯 **PROBLEM SOLVED: Docker Exec Approach**
+## 🎯 **PROBLEM SOLVED: Docker Exec Approach + Streamlit Integration**
 
-We successfully resolved the MCP (Model Context Protocol) integration by **switching from stdio transport to docker exec commands**, completely avoiding the asyncio TaskGroup errors that were blocking progress.
+We successfully resolved the MCP (Model Context Protocol) integration by **switching from stdio transport to docker exec commands**, completely avoiding the asyncio TaskGroup errors that were blocking progress. **BONUS:** Successfully integrated MCP functionality into the main Streamlit app with tabbed interface.
 
 ## 📋 **What We Built**
 
 ### **Core Files:**
 - **`working_mcp_client.py`** - Docker exec-based MCP client ✅ WORKING
+- **`multi_mcp_client.py`** - Multi-server MCP client manager ✅ WORKING
 - **`mcp_openai_bot_v2.py`** - OpenAI integration with MCP tools ✅ WORKING  
+- **`mcp_tab.py`** - Streamlit UI tab for MCP functionality ✅ WORKING
 - **`config.py`** - Environment configuration ✅ WORKING
+
+### **Streamlit Integration:**
+- **Tabbed Interface** - Chat tab + MCP tab working together
+- **Live MCP Tools** - Filesystem operations accessible via UI
+- **Container Integration** - Streamlit app connects to MCP containers
+- **Real-time Updates** - File operations reflect immediately
 
 ### **Key Features:**
 - **8 MCP filesystem tools** working perfectly
@@ -75,20 +83,65 @@ async def _run_docker_command(self, command: List[str]):
 | `search_files` | Search for files | ✅ Working |
 | `directory_tree` | Get directory tree | ✅ Working |
 
-## 🔮 **Next Steps**
+## 🔮 **Next Steps - Plug & Play MCP Architecture**
 
-### **For Multiple MCP Servers:**
-1. **Add containers** to `compose.yaml`
-2. **Copy the pattern** from `working_mcp_client.py`
-3. **Create server-specific clients** for each MCP server type
-4. **Build simple router** to dispatch tool calls to appropriate client
-5. **No changes needed** to existing agent code
+### **Vision: Modular MCP Server Ecosystem**
 
-### **Integration with Main Toolkit:**
-- Can easily integrate this pattern into the main agent service
-- MCP tools can be added to any LangGraph agent 
-- Docker exec approach works reliably in all environments
-- Ready for production deployment
+```
+/workspaces/Agent-Framework/mcp_integration/
+├── servers/
+│   ├── filesystem/           # MCP Filesystem Server
+│   │   ├── Dockerfile
+│   │   ├── config.yaml
+│   │   └── tools.py
+│   ├── memory/              # MCP Memory/Knowledge Graph Server  
+│   │   ├── Dockerfile
+│   │   ├── config.yaml
+│   │   └── tools.py
+│   ├── web-search/          # MCP Web Search Server
+│   │   ├── Dockerfile
+│   │   ├── config.yaml
+│   │   └── tools.py
+│   └── custom-api/          # Custom API integrations
+│       ├── Dockerfile
+│       ├── config.yaml
+│       └── tools.py
+├── core/
+│   ├── server_manager.py    # Auto-discover and manage servers
+│   ├── plugin_loader.py     # Dynamic server loading
+│   └── registry.py         # Server registry and health checks
+└── templates/
+    ├── server_template/     # Template for new MCP servers
+    └── docker-compose.template.yaml
+```
+
+### **Plug & Play Features:**
+
+1. **Auto-Discovery** - Scan `servers/` directory for new MCP servers
+2. **Dynamic Loading** - Add new servers without code changes
+3. **Health Monitoring** - Automatic server health checks and recovery
+4. **Template System** - Easy server creation from templates
+5. **Configuration Management** - Unified config system across all servers
+
+### **Target MCP Servers to Add:**
+
+| Server Type | Description | Priority | Container |
+|-------------|-------------|----------|-----------|
+| **Memory/Knowledge** | Knowledge graph, embeddings, RAG | 🔥 High | `mcp-memory` |
+| **Web Search** | Brave/Google search integration | 🔥 High | `mcp-websearch` |
+| **Database** | PostgreSQL/SQLite operations | 🟡 Medium | `mcp-database` |
+| **Email** | Send/receive email | 🟡 Medium | `mcp-email` |
+| **Calendar** | Google Calendar integration | 🟡 Medium | `mcp-calendar` |
+| **Git Operations** | Git commands, repo management | ⚪ Low | `mcp-git` |
+| **Cloud Storage** | AWS S3, Google Drive | ⚪ Low | `mcp-cloud` |
+
+### **Implementation Plan:**
+
+1. **Create server manager architecture**
+2. **Build server templates and auto-discovery**
+3. **Add Memory/Knowledge Graph server first**
+4. **Add Web Search server second**  
+5. **Create plugin system for easy server addition**
 
 ## ✅ **Success Metrics Achieved**
 
