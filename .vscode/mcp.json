@@ -1,0 +1,50 @@
+{
+	"servers": {
+		"memory": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-memory"
+			],
+			"type": "stdio"
+		},
+		"filesystem": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-filesystem@2025.7.1",
+				"${input:allowed_dirs}"
+			],
+			"envFile": "${input:envFile}",
+			"type": "stdio"
+		},
+		"brave-search": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"brave-search-mcp@0.8.0"
+			],
+			"env": {
+				"BRAVE_API_KEY": "${input:brave_api_key}"
+			}
+		}
+	},
+	"inputs": [
+		{
+			"id": "allowed_dirs",
+			"type": "promptString",
+			"description": "Allowed directories for MCP Filesystem Server"
+		},
+		{
+			"id": "envFile",
+			"type": "promptString",
+			"description": "Path to .env file for environment variables (optional)"
+		},
+		{
+			"id": "brave_api_key",
+			"type": "promptString",
+			"description": "Enter your Brave Search API key"
+		}
+	]
+}
