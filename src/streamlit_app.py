@@ -1,8 +1,10 @@
 import asyncio
 import os
+import sys
 import urllib.parse
 import uuid
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -11,6 +13,17 @@ from pydantic import ValidationError
 from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage
 from schema.task_data import TaskData, TaskDataStatus
+
+# Add mcp_integration to path for MCP functionality
+mcp_path = Path(__file__).parent.parent / "mcp_integration"
+sys.path.insert(0, str(mcp_path))
+
+# Import MCP tab functionality
+try:
+    from mcp_tab import render_mcp_tab
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -179,64 +192,76 @@ async def main() -> None:
             "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
         )
 
-    # Draw existing messages
-    messages: list[ChatMessage] = st.session_state.messages
+    # Create tabs for different functionality
+    if MCP_AVAILABLE:
+        tab1, tab2 = st.tabs(["💬 Chat", "🛠️ MCP Filesystem"])
+    else:
+        tab1 = st.container()
 
-    if len(messages) == 0:
-        match agent_client.agent:
-            case "chatbot":
-                WELCOME = "Hello! I'm a simple chatbot. Ask me anything!"
-            case "interrupt-agent":
-                WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
-            case "research-assistant":
-                WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
-            case "rag-assistant":
-                WELCOME = """Hello! I'm an AI-powered Company Policy & HR assistant with access to AcmeTech's Employee Handbook.
-                I can help you find information about benefits, remote work, time-off policies, company values, and more. Ask me anything!"""
-            case _:
-                WELCOME = "Hello! I'm an AI agent. Ask me anything!"
+    with tab1:
+        # Draw existing messages
+        messages: list[ChatMessage] = st.session_state.messages
 
-        with st.chat_message("ai"):
-            st.write(WELCOME)
+        if len(messages) == 0:
+            match agent_client.agent:
+                case "chatbot":
+                    WELCOME = "Hello! I'm a simple chatbot. Ask me anything!"
+                case "interrupt-agent":
+                    WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
+                case "research-assistant":
+                    WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+                case "rag-assistant":
+                    WELCOME = """Hello! I'm an AI-powered Company Policy & HR assistant with access to AcmeTech's Employee Handbook.
+                    I can help you find information about benefits, remote work, time-off policies, company values, and more. Ask me anything!"""
+                case _:
+                    WELCOME = "Hello! I'm an AI agent. Ask me anything!"
 
-    # draw_messages() expects an async iterator over messages
-    async def amessage_iter() -> AsyncGenerator[ChatMessage, None]:
-        for m in messages:
-            yield m
+            with st.chat_message("ai"):
+                st.write(WELCOME)
 
-    await draw_messages(amessage_iter())
+        # draw_messages() expects an async iterator over messages
+        async def amessage_iter() -> AsyncGenerator[ChatMessage, None]:
+            for m in messages:
+                yield m
 
-    # Generate new message if the user provided new input
-    if user_input := st.chat_input():
-        messages.append(ChatMessage(type="human", content=user_input))
-        st.chat_message("human").write(user_input)
-        try:
-            if use_streaming:
-                stream = agent_client.astream(
-                    message=user_input,
-                    model=model,
-                    thread_id=st.session_state.thread_id,
-                    user_id=user_id,
-                )
-                await draw_messages(stream, is_new=True)
-            else:
-                response = await agent_client.ainvoke(
-                    message=user_input,
-                    model=model,
-                    thread_id=st.session_state.thread_id,
-                    user_id=user_id,
-                )
-                messages.append(response)
-                st.chat_message("ai").write(response.content)
-            st.rerun()  # Clear stale containers
-        except AgentClientError as e:
-            st.error(f"Error generating response: {e}")
-            st.stop()
+        await draw_messages(amessage_iter())
 
-    # If messages have been generated, show feedback widget
-    if len(messages) > 0 and st.session_state.last_message:
-        with st.session_state.last_message:
-            await handle_feedback()
+        # Generate new message if the user provided new input
+        if user_input := st.chat_input():
+            messages.append(ChatMessage(type="human", content=user_input))
+            st.chat_message("human").write(user_input)
+            try:
+                if use_streaming:
+                    stream = agent_client.astream(
+                        message=user_input,
+                        model=model,
+                        thread_id=st.session_state.thread_id,
+                        user_id=user_id,
+                    )
+                    await draw_messages(stream, is_new=True)
+                else:
+                    response = await agent_client.ainvoke(
+                        message=user_input,
+                        model=model,
+                        thread_id=st.session_state.thread_id,
+                        user_id=user_id,
+                    )
+                    messages.append(response)
+                    st.chat_message("ai").write(response.content)
+                st.rerun()  # Clear stale containers
+            except AgentClientError as e:
+                st.error(f"Error generating response: {e}")
+                st.stop()
+
+        # If messages have been generated, show feedback widget
+        if len(messages) > 0 and st.session_state.last_message:
+            with st.session_state.last_message:
+                await handle_feedback()
+
+    # MCP Tab
+    if MCP_AVAILABLE:
+        with tab2:
+            await render_mcp_tab()
 
 
 async def draw_messages(

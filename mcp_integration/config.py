@@ -20,7 +20,7 @@ MCP_SERVERS = {
     "filesystem": {
         "name": "Filesystem Server",
         "description": "File and directory operations",
-        "container_name": os.getenv("MCP_CONTAINER_NAME", "agent-service-toolkit-mcp-filesystem-1"),
+        "container_name": os.getenv("MCP_CONTAINER_NAME", "agent-framework-mcp-filesystem-1"),
         "server_path": os.getenv("MCP_SERVER_PATH", "/projects"),
         "icon": "📁",
         "enabled": True,
