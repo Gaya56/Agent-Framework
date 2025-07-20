@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  mcp-github:
+    container_name: agent-framework-mcp-github-1
+    image: mcp/github:latest
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    # No health check for stdio-based server

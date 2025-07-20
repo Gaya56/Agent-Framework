@@ -116,5 +116,14 @@ services:
       retries: 3
       start_period: 10s
 
+  mcp-github:
+    container_name: agent-framework-mcp-github-1
+    image: mcp/github:latest
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
 volumes:
   postgres_data:

@@ -97,6 +97,8 @@ class MCPServerClient:
                 return await self._call_filesystem_tool(tool_name, arguments)
             elif self.server_id == "brave_search":
                 return await self._call_brave_search_tool(tool_name, arguments)
+            elif self.server_id == "github":
+                return await self._call_github_tool(tool_name, arguments)
             else:
                 return {"error": f"Tool execution not yet implemented for {self.config['name']}"}
                 
@@ -353,6 +355,176 @@ class MCPServerClient:
         
         # Fallback for unknown result format
         return f"Search completed. Raw results: {str(results)}"
+
+    async def _call_github_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute GitHub-specific tools via STDIO protocol"""
+        import json
+        
+        # Build MCP request payload
+        mcp_request = {
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments
+            }
+        }
+        
+        json_payload = json.dumps(mcp_request)
+        
+        # Execute via STDIO - GitHub server uses stdin/stdout
+        stdin_cmd = [
+            "sh", "-c", 
+            f"echo '{json_payload}' | docker exec -i {self.container_name} node dist/index.js"
+        ]
+        
+        result = await self._run_docker_command(stdin_cmd)
+        
+        if result["success"]:
+            try:
+                response_data = json.loads(result["output"])
+                
+                if "error" in response_data:
+                    return {"error": f"GitHub API error: {response_data['error']}"}
+                
+                if "result" in response_data:
+                    formatted_results = self._format_github_results(tool_name, response_data["result"])
+                    return {
+                        "content": [{
+                            "type": "text",
+                            "text": formatted_results
+                        }]
+                    }
+                else:
+                    return {
+                        "content": [{
+                            "type": "text",
+                            "text": f"GitHub tool completed: {result['output']}"
+                        }]
+                    }
+                    
+            except json.JSONDecodeError as e:
+                return {"error": f"Failed to parse GitHub response: {e}\nRaw output: {result['output']}"}
+        else:
+            return {"error": f"Failed to call GitHub API: {result['error']}"}
+
+    def _format_github_results(self, tool_name: str, results: dict) -> str:
+        """Format GitHub API results for display"""
+        
+        if tool_name == "create_or_update_file":
+            if "commit" in results:
+                commit = results["commit"]
+                file_url = results.get("content", {}).get("html_url", "N/A")
+                return f"✅ File created/updated successfully!\n📄 File URL: {file_url}\n🔗 Commit: {commit.get('html_url', 'N/A')}\n📝 SHA: {commit.get('sha', 'N/A')}"
+            else:
+                return f"File operation completed: {str(results)}"
+                
+        elif tool_name == "push_files":
+            if "commit" in results:
+                commit = results["commit"]
+                return f"✅ Files pushed successfully!\n🔗 Commit: {commit.get('html_url', 'N/A')}\n📝 SHA: {commit.get('sha', 'N/A')}\n📁 Files: {len(results.get('files', []))}"
+            else:
+                return f"Push operation completed: {str(results)}"
+                
+        elif tool_name == "search_repositories":
+            if "items" in results:
+                formatted = f"🔍 Found {results.get('total_count', 0)} repositories:\n\n"
+                for i, repo in enumerate(results["items"][:10], 1):
+                    name = repo.get("full_name", "N/A")
+                    description = repo.get("description", "No description")
+                    stars = repo.get("stargazers_count", 0)
+                    url = repo.get("html_url", "N/A")
+                    formatted += f"{i}. **{name}** ⭐ {stars}\n   {url}\n   {description}\n\n"
+                return formatted
+            else:
+                return "No repositories found."
+                
+        elif tool_name == "create_repository":
+            name = results.get("full_name", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"✅ Repository created successfully!\n📚 {name}\n🔗 {url}"
+            
+        elif tool_name == "get_file_contents":
+            content = results.get("content", "")
+            path = results.get("path", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"📄 File: {path}\n🔗 URL: {url}\n\n```\n{content}\n```"
+            
+        elif tool_name == "create_issue":
+            number = results.get("number", "N/A")
+            title = results.get("title", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"✅ Issue created successfully!\n🐛 #{number}: {title}\n🔗 {url}"
+            
+        elif tool_name == "create_pull_request":
+            number = results.get("number", "N/A")
+            title = results.get("title", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"✅ Pull request created successfully!\n🔄 #{number}: {title}\n🔗 {url}"
+            
+        elif tool_name == "fork_repository":
+            name = results.get("full_name", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"✅ Repository forked successfully!\n🍴 {name}\n🔗 {url}"
+            
+        elif tool_name == "create_branch":
+            ref = results.get("ref", "N/A")
+            sha = results.get("object", {}).get("sha", "N/A")
+            return f"✅ Branch created successfully!\n🌿 {ref}\n📝 SHA: {sha}"
+            
+        elif tool_name == "list_issues":
+            if isinstance(results, list):
+                formatted = f"🐛 Found {len(results)} issues:\n\n"
+                for i, issue in enumerate(results[:10], 1):
+                    number = issue.get("number", "N/A")
+                    title = issue.get("title", "N/A")
+                    state = issue.get("state", "N/A")
+                    url = issue.get("html_url", "N/A")
+                    formatted += f"{i}. #{number} [{state.upper()}] {title}\n   🔗 {url}\n\n"
+                return formatted
+            else:
+                return "No issues found."
+                
+        elif tool_name == "update_issue":
+            number = results.get("number", "N/A")
+            title = results.get("title", "N/A")
+            state = results.get("state", "N/A")
+            url = results.get("html_url", "N/A")
+            return f"✅ Issue updated successfully!\n🐛 #{number} [{state.upper()}]: {title}\n🔗 {url}"
+            
+        elif tool_name == "add_issue_comment":
+            url = results.get("html_url", "N/A")
+            return f"✅ Comment added successfully!\n💬 {url}"
+            
+        elif tool_name == "search_code":
+            if "items" in results:
+                formatted = f"🔍 Found {results.get('total_count', 0)} code results:\n\n"
+                for i, item in enumerate(results["items"][:10], 1):
+                    name = item.get("name", "N/A")
+                    path = item.get("path", "N/A")
+                    repo = item.get("repository", {}).get("full_name", "N/A")
+                    url = item.get("html_url", "N/A")
+                    formatted += f"{i}. **{name}** in {repo}\n   📁 {path}\n   🔗 {url}\n\n"
+                return formatted
+            else:
+                return "No code results found."
+                
+        elif tool_name == "search_issues":
+            if "items" in results:
+                formatted = f"🔍 Found {results.get('total_count', 0)} issues/PRs:\n\n"
+                for i, item in enumerate(results["items"][:10], 1):
+                    number = item.get("number", "N/A")
+                    title = item.get("title", "N/A")
+                    state = item.get("state", "N/A")
+                    repo = item.get("repository_url", "").split("/")[-2:] if item.get("repository_url") else ["N/A"]
+                    repo_name = "/".join(repo) if len(repo) == 2 else "N/A"
+                    url = item.get("html_url", "N/A")
+                    formatted += f"{i}. #{number} [{state.upper()}] {title}\n   📚 {repo_name}\n   🔗 {url}\n\n"
+                return formatted
+            else:
+                return "No issues/PRs found."
+        
+        # Fallback for unknown result format
+        return f"GitHub operation completed. Results: {str(results)}"
 
 
 class MultiMCPClient:
