@@ -70,6 +70,7 @@ services:
       - .env
     volumes:
       - ./mcp_integration:/app/mcp_integration
+      - /var/run/docker.sock:/var/run/docker.sock  # Mount Docker socket
     develop:
       watch:
         - path: src/client/
@@ -86,6 +87,7 @@ services:
           target: /app/mcp_integration/
 
   mcp-filesystem:
+    container_name: agent-framework-mcp-filesystem-1
     image: mcp/filesystem:latest
     restart: unless-stopped
     volumes:
@@ -102,23 +104,19 @@ services:
   mcp-brave-search:
     container_name: agent-framework-mcp-brave-search-1
     image: mcp/brave-search:latest
+    env_file:
+      - .env
     environment:
       - BRAVE_API_KEY=${BRAVE_API_KEY}
-    ports:
-      - "8111:8080"
     restart: unless-stopped
     stdin_open: true
     tty: true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
   mcp-github:
     container_name: agent-framework-mcp-github-1
     image: mcp/github:latest
+    env_file:
+      - .env
     environment:
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
     restart: unless-stopped

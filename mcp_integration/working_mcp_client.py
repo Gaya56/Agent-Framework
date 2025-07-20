@@ -4,12 +4,9 @@ This provides a reliable way to interact with MCP filesystem containers
 without the TaskGroup errors we encountered with stdio_client.
 """
 import asyncio
-import json
-import subprocess
-from typing import Any, Dict, List, Optional
-from pathlib import Path
+from typing import Any
 
-from config import MCP_CONTAINER_NAME, MCP_SERVER_PATH
+from config import get_enabled_servers
 
 
 class WorkingMCPClient:
@@ -19,8 +16,12 @@ class WorkingMCPClient:
     """
     
     def __init__(self):
-        self.container_name = MCP_CONTAINER_NAME
-        self.server_path = MCP_SERVER_PATH
+        # Get filesystem config from enabled servers
+        enabled_servers = get_enabled_servers()
+        filesystem_config = enabled_servers.get("filesystem", {})
+        
+        self.container_name = filesystem_config.get("container_name", "agent-framework-mcp-filesystem-1")
+        self.server_path = filesystem_config.get("server_path", "/projects")
         self.is_initialized = False
         self.available_tools = {
             "list_directory": {
@@ -60,7 +61,7 @@ class WorkingMCPClient:
     async def initialize(self) -> bool:
         """Initialize connection to MCP container"""
         try:
-            print(f"🔄 Initializing Working MCP Client...")
+            print("🔄 Initializing Working MCP Client...")
             print(f"   Container: {self.container_name}")
             print(f"   Base Path: {self.server_path}")
             
@@ -68,7 +69,7 @@ class WorkingMCPClient:
             result = await self._run_docker_command(["ls", "-la", self.server_path])
             
             if result["success"]:
-                print(f"✅ Container connection successful")
+                print("✅ Container connection successful")
                 print(f"   Available directories: {len(result['output'].splitlines())} items")
                 self.is_initialized = True
                 return True
@@ -80,7 +81,7 @@ class WorkingMCPClient:
             print(f"❌ MCP client initialization failed: {e}")
             return False
     
-    async def _run_docker_command(self, command: List[str]) -> Dict[str, Any]:
+    async def _run_docker_command(self, command: list[str]) -> dict[str, Any]:
         """Execute command in docker container"""
         try:
             full_command = ["docker", "exec", self.container_name] + command
@@ -118,7 +119,7 @@ class WorkingMCPClient:
         path = path.replace('..', '')
         return path
     
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Execute MCP tool via docker commands"""
         if not self.is_initialized:
             return {"error": "MCP client not initialized"}
@@ -242,7 +243,7 @@ class WorkingMCPClient:
         except Exception as e:
             return {"error": f"Tool execution failed: {e}"}
     
-    def get_available_tools(self) -> Dict[str, Dict]:
+    def get_available_tools(self) -> dict[str, dict]:
         """Get list of available MCP tools"""
         return self.available_tools
     

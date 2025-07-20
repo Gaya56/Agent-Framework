@@ -280,9 +280,14 @@ async def process_mcp_message(user_input: str, mcp_client: MultiMCPClient, selec
     from mcp_openai_bot_v2 import MCPOpenAIBot
     
     try:
-        # Create a new bot instance for this interaction with the selected server
-        bot = MCPOpenAIBot(selected_server)
-        await bot.initialize()
+        # Get or create persistent bot instance for the selected server
+        bot_key = f"mcp_bot_{selected_server}"
+        if bot_key not in st.session_state or st.session_state[bot_key] is None:
+            # Create a new bot instance for this server, using the persistent MCP client
+            st.session_state[bot_key] = MCPOpenAIBot(selected_server, mcp_client)
+            await st.session_state[bot_key].initialize()
+        
+        bot: MCPOpenAIBot = st.session_state[bot_key]
         
         # Build conversation context if provided
         if conversation_history:
@@ -307,11 +312,11 @@ async def process_mcp_message(user_input: str, mcp_client: MultiMCPClient, selec
         server_context = f"You are working with {server_info.get('name', 'MCP Server')} ({selected_server}). "
         full_input = server_context + contextual_input
         
-        # Use the OpenAI bot to process the message with context
+        # Use the persistent OpenAI bot to process the message with context
         response = await bot.chat(full_input)
         
-        # Clean up
-        await bot.close()
+        # DO NOT close the bot - keep it persistent for future requests
+        # await bot.close()  # <-- Removed this line
         
         return response
         

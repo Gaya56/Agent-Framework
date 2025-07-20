@@ -56,6 +56,7 @@ docker compose watch
 1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
+1. **MCP Integration**: Full Model Context Protocol (MCP) support with persistent connections to multiple servers including Filesystem, Brave Search, and GitHub APIs - see [MCP Architecture Guide](mcp_integration/MCP_ARCHITECTURE.md).
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).

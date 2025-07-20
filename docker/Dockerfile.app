@@ -5,6 +5,13 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
 
+# Install Docker CLI
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml .
 COPY uv.lock .
 RUN pip install --no-cache-dir uv

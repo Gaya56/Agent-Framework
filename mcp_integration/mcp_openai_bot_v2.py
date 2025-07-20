@@ -14,21 +14,26 @@ from multi_mcp_client import MultiMCPClient
 class MCPOpenAIBot:
     """OpenAI bot with MCP multi-server tools"""
     
-    def __init__(self, selected_server: str = "filesystem"):
+    def __init__(self, selected_server: str = "filesystem", mcp_client: MultiMCPClient | None = None):
         # Initialize OpenAI client
         self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
         
-        # Initialize Multi-MCP client
-        self.mcp_client = MultiMCPClient()
+        # Use provided MCP client or create a new one
+        self.mcp_client = mcp_client if mcp_client is not None else MultiMCPClient()
         self.mcp_ready = False
         self.selected_server = selected_server  # Use the selected server instead of default
+        self._owns_mcp_client = mcp_client is None  # Track if we created the client
         
     async def initialize(self):
         """Initialize MCP connection"""
         print("🤖 Initializing MCP OpenAI Bot...")
         
-        # Initialize MCP client
-        self.mcp_ready = await self.mcp_client.initialize()
+        # Initialize MCP client only if we created it (not if it was provided)
+        if self._owns_mcp_client:
+            self.mcp_ready = await self.mcp_client.initialize()
+        else:
+            # Use existing initialized client
+            self.mcp_ready = True
         
         if self.mcp_ready:
             available_servers = self.mcp_client.get_available_servers()
@@ -215,8 +220,8 @@ Selected Server: {server_info.get('name', self.selected_server)}
             return f"Error: {e}"
     
     async def close(self):
-        """Close MCP connection"""
-        if self.mcp_client:
+        """Close MCP connection only if we own it"""
+        if self.mcp_client and self._owns_mcp_client:
             await self.mcp_client.close()
 
 
