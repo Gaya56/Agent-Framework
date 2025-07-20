@@ -60,8 +60,8 @@
 
 ### 🚀 **Working Features:**
 - ✅ **Filesystem**: 8 tools (create_file, read_file, list_directory, etc.)
-- ✅ **Brave Search**: 5 search types (web, image, video, news, local)  
-- ⏳ **GitHub**: 25+ tools (just needs valid API token)
+- ✅ **Brave Search**: 5 search types (web, image, video, news, local) - **REAL API CALLS**  
+- ✅ **GitHub**: 25+ tools (authentication works, some API execution via real MCP tools)
 
 ### 🏗️ **Architecture Benefits:**
 - **Scalable**: Easy to add new MCP servers

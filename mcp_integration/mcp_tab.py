@@ -110,7 +110,7 @@ async def render_mcp_tab() -> None:
         with st.expander("💬 Conversation Tracking"):
             message_count = len(st.session_state.mcp_messages)
             st.info(f"📝 {message_count} messages in current conversation")
-            st.write("**Context**: Last 6 messages sent to AI")
+            st.write("**Context**: Last 20 messages sent to AI")
             if message_count > 0:
                 st.write(f"**Thread ID**: {st.session_state.mcp_thread_id[:8]}...")
 
@@ -293,7 +293,7 @@ async def process_mcp_message(user_input: str, mcp_client: MultiMCPClient, selec
         if conversation_history:
             # Convert ChatMessage history to OpenAI format
             conversation_context = ""
-            for msg in conversation_history[-6:]:  # Keep last 6 messages for context
+            for msg in conversation_history[-20:]:  # Keep last 20 messages for context
                 if msg.type == "human":
                     conversation_context += f"User: {msg.content}\n"
                 elif msg.type == "ai":
