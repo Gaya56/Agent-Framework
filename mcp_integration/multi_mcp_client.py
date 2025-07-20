@@ -95,6 +95,8 @@ class MCPServerClient:
             # For now, only implement filesystem tools since that's what we have
             if self.server_id == "filesystem":
                 return await self._call_filesystem_tool(tool_name, arguments)
+            elif self.server_id == "brave_search":
+                return await self._call_brave_search_tool(tool_name, arguments)
             else:
                 return {"error": f"Tool execution not yet implemented for {self.config['name']}"}
                 
@@ -225,6 +227,132 @@ class MCPServerClient:
         
         else:
             return {"error": f"Unknown filesystem tool: {tool_name}"}
+
+    async def _call_brave_search_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Execute Brave search-specific tools"""
+        import json
+        
+        # Prepare the MCP request payload
+        mcp_request = {
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments
+            }
+        }
+        
+        # Convert to JSON string for the curl command
+        json_payload = json.dumps(mcp_request)
+        
+        # Build the curl command to call the MCP server via HTTP
+        curl_cmd = [
+            "sh", "-c",
+            f"curl -s -X POST http://localhost:8080 -H 'Content-Type: application/json' -d '{json_payload}'"
+        ]
+        
+        # Execute the curl command in the Brave search container
+        result = await self._run_docker_command(curl_cmd)
+        
+        if result["success"]:
+            try:
+                # Parse the JSON response
+                response_data = json.loads(result["output"])
+                
+                # Check if the MCP response contains an error
+                if "error" in response_data:
+                    return {"error": f"Brave Search API error: {response_data['error']}"}
+                
+                # Return the result in the expected format
+                if "result" in response_data:
+                    # Format the search results for display
+                    search_results = response_data["result"]
+                    formatted_results = self._format_brave_search_results(tool_name, search_results)
+                    
+                    return {
+                        "content": [{
+                            "type": "text",
+                            "text": formatted_results
+                        }]
+                    }
+                else:
+                    return {
+                        "content": [{
+                            "type": "text",
+                            "text": f"Search completed but no results returned: {result['output']}"
+                        }]
+                    }
+                    
+            except json.JSONDecodeError as e:
+                return {"error": f"Failed to parse Brave Search response: {e}\nRaw output: {result['output']}"}
+        else:
+            return {"error": f"Failed to call Brave Search API: {result['error']}"}
+
+    def _format_brave_search_results(self, tool_name: str, results: dict) -> str:
+        """Format Brave search results for display"""
+        if tool_name == "brave_web_search":
+            if "web" in results and "results" in results["web"]:
+                formatted = "🔍 Web Search Results:\n\n"
+                for i, result in enumerate(results["web"]["results"][:10], 1):
+                    title = result.get("title", "No title")
+                    url = result.get("url", "No URL")
+                    description = result.get("description", "No description")
+                    formatted += f"{i}. **{title}**\n   {url}\n   {description}\n\n"
+                return formatted
+            else:
+                return "No web search results found."
+                
+        elif tool_name == "brave_image_search":
+            if "images" in results and "results" in results["images"]:
+                formatted = "🖼️ Image Search Results:\n\n"
+                for i, result in enumerate(results["images"]["results"][:5], 1):
+                    title = result.get("title", "No title")
+                    url = result.get("url", "No URL")
+                    thumbnail = result.get("thumbnail", {}).get("src", "No thumbnail")
+                    formatted += f"{i}. **{title}**\n   Image: {url}\n   Thumbnail: {thumbnail}\n\n"
+                return formatted
+            else:
+                return "No image search results found."
+                
+        elif tool_name == "brave_video_search":
+            if "videos" in results and "results" in results["videos"]:
+                formatted = "🎥 Video Search Results:\n\n"
+                for i, result in enumerate(results["videos"]["results"][:10], 1):
+                    title = result.get("title", "No title")
+                    url = result.get("url", "No URL")
+                    duration = result.get("duration", "Unknown duration")
+                    formatted += f"{i}. **{title}**\n   {url}\n   Duration: {duration}\n\n"
+                return formatted
+            else:
+                return "No video search results found."
+                
+        elif tool_name == "brave_news_search":
+            if "news" in results and "results" in results["news"]:
+                formatted = "📰 News Search Results:\n\n"
+                for i, result in enumerate(results["news"]["results"][:10], 1):
+                    title = result.get("title", "No title")
+                    url = result.get("url", "No URL")
+                    description = result.get("description", "No description")
+                    age = result.get("age", "Unknown date")
+                    formatted += f"{i}. **{title}**\n   {url}\n   {description}\n   Published: {age}\n\n"
+                return formatted
+            else:
+                return "No news search results found."
+                
+        elif tool_name == "brave_local_search":
+            if "locations" in results and "results" in results["locations"]:
+                formatted = "📍 Local Search Results:\n\n"
+                for i, result in enumerate(results["locations"]["results"][:10], 1):
+                    title = result.get("title", "No title")
+                    address = result.get("address", "No address")
+                    phone = result.get("phone", "No phone")
+                    rating = result.get("rating", {}).get("value", "No rating")
+                    formatted += f"{i}. **{title}**\n   {address}\n   Phone: {phone}\n   Rating: {rating}\n\n"
+                return formatted
+            else:
+                return "No local search results found."
+        
+        # Fallback for unknown result format
+        return f"Search completed. Raw results: {str(results)}"
 
 
 class MultiMCPClient:

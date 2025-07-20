@@ -134,7 +134,7 @@ async def render_mcp_tab() -> None:
     server_tools = current_server_info.get('tools', [])
     quick_actions = ["Select an action..."]
     
-    # Add common actions based on available tools
+    # Add filesystem actions
     if "list_directory" in server_tools:
         quick_actions.append("List the contents of the directory")
     if "create_directory" in server_tools:
@@ -149,6 +149,18 @@ async def render_mcp_tab() -> None:
         quick_actions.append("Get file information")
     if "search_files" in server_tools:
         quick_actions.append("Search for a specific file")
+    
+    # Add Brave Search actions
+    if "brave_web_search" in server_tools:
+        quick_actions.append("Search the web")
+    if "brave_image_search" in server_tools:
+        quick_actions.append("Search for images")
+    if "brave_video_search" in server_tools:
+        quick_actions.append("Search for videos")
+    if "brave_news_search" in server_tools:
+        quick_actions.append("Search for news")
+    if "brave_local_search" in server_tools:
+        quick_actions.append("Search for local businesses")
     
     # Create columns for better layout
     col1, col2 = st.columns([3, 1])
@@ -246,8 +258,8 @@ async def process_mcp_message(user_input: str, mcp_client: MultiMCPClient, selec
     from mcp_openai_bot_v2 import MCPOpenAIBot
     
     try:
-        # Create a new bot instance for this interaction
-        bot = MCPOpenAIBot()
+        # Create a new bot instance for this interaction with the selected server
+        bot = MCPOpenAIBot(selected_server)
         await bot.initialize()
         
         # Build conversation context if provided

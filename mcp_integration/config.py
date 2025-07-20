@@ -14,6 +14,7 @@ load_dotenv(env_path)
 
 # Configuration settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 
 # MCP Server configurations
 MCP_SERVERS = {
@@ -58,7 +59,7 @@ MCP_SERVERS = {
                 "parameters": {"path": "Root directory path", "max_depth": "Maximum depth (optional)"}
             }
         }
-    }
+    },
     # Future servers will be added here
     # "memory": {
     #     "name": "Memory Server", 
@@ -69,11 +70,65 @@ MCP_SERVERS = {
     #     "enabled": False,
     #     "tools": {...}
     # }
+    "brave_search": {
+        "name": "Brave Search",
+        "description": "Web, image, video and news search via Brave Search API",
+        "container_name": os.getenv("MCP_BRAVE_CONTAINER_NAME", "agent-framework-mcp-brave-search-1"),
+        "server_path": "/",  # not used for search, but required
+        "icon": "🔍",
+        "enabled": True,
+        "tools": {
+            "brave_web_search": {
+                "description": "Perform a web search using Brave Search API",
+                "parameters": {
+                    "query": "Search query (required)",
+                    "count": "Number of results (optional, default 10)",
+                    "safesearch": "off | moderate | strict (optional)",
+                    "freshness": "pd | pw | pm | py for past day/week/month/year (optional)"
+                }
+            },
+            "brave_image_search": {
+                "description": "Search for images using Brave Search API",
+                "parameters": {
+                    "query": "Search query (required)",
+                    "count": "Number of results (optional, default 3)",
+                    "safesearch": "off | strict (optional)"
+                }
+            },
+            "brave_video_search": {
+                "description": "Search for videos using Brave Search API",
+                "parameters": {
+                    "query": "Search query (required)",
+                    "count": "Number of results (optional, default 10)",
+                    "freshness": "pd | pw | pm | py for past day/week/month/year (optional)"
+                }
+            },
+            "brave_news_search": {
+                "description": "Search for news articles using Brave Search API",
+                "parameters": {
+                    "query": "Search query (required)",
+                    "count": "Number of results (optional, default 10)",
+                    "freshness": "pd | pw | pm | py for past day/week/month/year (optional)"
+                }
+            },
+            "brave_local_search": {
+                "description": "Search for local businesses and places",
+                "parameters": {
+                    "query": "Local search query (required)",
+                    "count": "Number of results (optional, default 10)"
+                }
+            }
+        }
+    }
 }
 
 # Validate required settings
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY is required. Please set it in .env file.")
+
+# Validate Brave API key if Brave Search is enabled
+if MCP_SERVERS.get("brave_search", {}).get("enabled", False) and not BRAVE_API_KEY:
+    print("⚠️ Warning: BRAVE_API_KEY is not set but Brave Search is enabled. Please set it in .env file.")
 
 # Get enabled servers
 def get_enabled_servers() -> dict[str, dict[str, Any]]:
@@ -91,3 +146,4 @@ print(f"   - Enabled MCP Servers: {len(enabled_servers)}")
 for server_id, config in enabled_servers.items():
     print(f"     • {config['icon']} {config['name']} ({server_id})")
 print(f"   - OpenAI API Key: {'✅ Set' if OPENAI_API_KEY else '❌ Missing'}")
+print(f"   - Brave API Key: {'✅ Set' if BRAVE_API_KEY else '❌ Missing'}")

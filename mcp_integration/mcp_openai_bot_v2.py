@@ -14,14 +14,14 @@ from multi_mcp_client import MultiMCPClient
 class MCPOpenAIBot:
     """OpenAI bot with MCP multi-server tools"""
     
-    def __init__(self):
+    def __init__(self, selected_server: str = "filesystem"):
         # Initialize OpenAI client
         self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
         
         # Initialize Multi-MCP client
         self.mcp_client = MultiMCPClient()
         self.mcp_ready = False
-        self.default_server = "filesystem"  # Default to filesystem server
+        self.selected_server = selected_server  # Use the selected server instead of default
         
     async def initialize(self):
         """Initialize MCP connection"""
@@ -40,10 +40,10 @@ class MCPOpenAIBot:
             return False
     
     def get_available_tools(self):
-        """Get available tools from default server (for compatibility)"""
+        """Get available tools from selected server"""
         if not self.mcp_ready:
             return {}
-        return self.mcp_client.get_server_tools(self.default_server)
+        return self.mcp_client.get_server_tools(self.selected_server)
     
     def _create_openai_tools(self):
         """Convert MCP tools to OpenAI function format"""
@@ -83,7 +83,7 @@ class MCPOpenAIBot:
         if not self.mcp_ready:
             return "MCP tools are not available"
         
-        result = await self.mcp_client.call_tool(self.default_server, tool_name, arguments)
+        result = await self.mcp_client.call_tool(self.selected_server, tool_name, arguments)
         
         if "error" in result:
             return f"Error: {result['error']}"
@@ -95,13 +95,13 @@ class MCPOpenAIBot:
     async def chat(self, user_message: str) -> str:
         """Chat with the bot, which can use MCP tools"""
         try:
-            # Prepare messages
-            messages = [
-                {
-                    "role": "system", 
-                    "content": f"""You are an AI assistant with access to filesystem tools via MCP (Model Context Protocol).
-                    
-Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            # Get server information for dynamic system message
+            available_servers = self.mcp_client.get_available_servers()
+            server_info = available_servers.get(self.selected_server, {})
+            
+            # Create server-specific system message
+            if self.selected_server == "filesystem":
+                server_context = f"""You are an AI assistant with access to filesystem tools via MCP (Model Context Protocol).
 
 You can help users with:
 - Reading and writing files
@@ -113,10 +113,35 @@ You can help users with:
 
 The filesystem is mounted at /projects with these directories:
 - /projects/data - Read-only data files
-- /projects/mcp_data - Read-write working directory
+- /projects/mcp_data - Read-write working directory"""
+            elif self.selected_server == "brave_search":
+                server_context = f"""You are an AI assistant with access to Brave Search tools via MCP (Model Context Protocol).
+
+You can help users with:
+- Web search using Brave Search API
+- Image search
+- Video search  
+- News search
+- Local business search
+
+When performing searches, always provide clear, formatted results with titles, URLs, and descriptions."""
+            else:
+                server_context = f"""You are an AI assistant with access to {server_info.get('name', 'MCP')} tools via MCP (Model Context Protocol).
+
+Server: {server_info.get('name', 'Unknown')}
+Description: {server_info.get('description', 'No description available')}"""
+
+            # Prepare messages
+            messages = [
+                {
+                    "role": "system", 
+                    "content": f"""{server_context}
+                    
+Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 Be helpful and explain what you're doing when using tools.
 MCP Status: {'Available' if self.mcp_ready else 'Unavailable'}
+Selected Server: {server_info.get('name', self.selected_server)}
 """
                 },
                 {"role": "user", "content": user_message}

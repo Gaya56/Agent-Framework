@@ -1,0 +1,57 @@
+name: "brave-search"
+version: "1.0.0"
+description: "Web, image, video and news search via Brave API"
+icon: "🔍"
+enabled: true
+priority: 2  # after filesystem
+
+container:
+  name: "agent-framework-mcp-brave-search-1"
+  image: "mcp/brave-search:latest"  # use official image
+  ports:
+    - "8111:8080"  # map container port 8080 to host port 8111
+  environment:
+    - "BRAVE_API_KEY=${BRAVE_API_KEY}"
+
+tools:
+  - name: "brave_web_search"
+    description: "Perform a web search using Brave Search API"
+    parameters:
+      query: "Search query (required)"
+      count: "Number of results (optional, default 10)"
+      safesearch: "off | moderate | strict (optional, default moderate)"
+      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
+      
+  - name: "brave_image_search"
+    description: "Search for images using Brave Search API"
+    parameters:
+      query: "Search query (required)"
+      count: "Number of results (optional, default 3)"
+      safesearch: "off | strict (optional, default moderate)"
+      
+  - name: "brave_video_search"
+    description: "Search for videos using Brave Search API"
+    parameters:
+      query: "Search query (required)"
+      count: "Number of results (optional, default 10)"
+      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
+      
+  - name: "brave_news_search"
+    description: "Search for news articles using Brave Search API"
+    parameters:
+      query: "Search query (required)"
+      count: "Number of results (optional, default 10)"
+      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
+      
+  - name: "brave_local_search"
+    description: "Search for local businesses and places"
+    parameters:
+      query: "Local search query (required)"
+      count: "Number of results (optional, default 10)"
+
+dependencies: []
+health_check:
+  endpoint: "/health"  # if the server exposes a health endpoint
+  interval: 30
+  timeout: 10
+  retries: 3
