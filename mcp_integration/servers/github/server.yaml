@@ -13,6 +13,20 @@ container:
     - "GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}"
 
 tools:
+  - name: "get_authenticated_user"
+    description: "Get the authenticated user's information"
+    parameters: {}
+    
+  - name: "list_user_repositories"
+    description: "List repositories for the authenticated user"
+    parameters:
+      visibility: "Repository visibility: all, public, private (optional, default all)"
+      affiliation: "Relationship to repos: owner, collaborator, organization_member (optional, default owner,collaborator,organization_member)"
+      type: "Repository type: all, owner, public, private, member (optional, default all)"
+      sort: "Sort by created, updated, pushed, full_name (optional, default full_name)"
+      direction: "Sort direction: asc or desc (optional, default asc)"
+      per_page: "Results per page (optional, default 30, max 100)"
+      
   - name: "create_or_update_file"
     description: "Create or update a single file in a repository"
     parameters:

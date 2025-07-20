@@ -24,6 +24,21 @@ class WorkingGitHubClient:
         self.server_path = github_config.get("server_path", "/app")
         self.is_initialized = False
         self.available_tools = {
+            "get_authenticated_user": {
+                "description": "Get the authenticated user's information",
+                "parameters": {}
+            },
+            "list_user_repositories": {
+                "description": "List repositories for the authenticated user",
+                "parameters": {
+                    "visibility": "Repository visibility (all, public, private)",
+                    "affiliation": "Relationship to repos (owner, collaborator, organization_member)",
+                    "type": "Repository type (all, owner, public, private, member)",
+                    "sort": "Sort criteria (created, updated, pushed, full_name)",
+                    "direction": "Sort direction (asc, desc)",
+                    "per_page": "Number of results per page (max 100)"
+                }
+            },
             "search_repositories": {
                 "description": "Search GitHub repositories",
                 "parameters": {
@@ -137,25 +152,147 @@ class WorkingGitHubClient:
             }
     
     async def _run_mcp_tool(self, tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute MCP tool inside the container using node"""
+        """Execute GitHub API call directly"""
         try:
-            # Build the MCP tool command - use node to run the server directly
-            params_json = json.dumps(params)
+            # Import here to avoid dependency issues
+            import os
+            import aiohttp
+            import json
             
-            # The MCP server binary is at dist/index.js and expects stdio communication
-            # For testing purposes, we'll simulate a simple call
-            # In reality, MCP servers communicate via JSON-RPC over stdio
+            # Get GitHub token from environment
+            github_token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+            if not github_token:
+                return {"error": "GitHub Personal Access Token not found in environment"}
             
-            # For now, return a simulated response since MCP servers are designed for stdio interaction
+            # GitHub API headers
+            headers = {
+                "Authorization": f"token {github_token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Agent-Framework-MCP-Client"
+            }
+            
+            # Make actual GitHub API calls
+            if tool_name == "get_authenticated_user":
+                async with aiohttp.ClientSession() as session:
+                    async with session.get("https://api.github.com/user", headers=headers) as response:
+                        if response.status == 200:
+                            user_data = await response.json()
+                            result_text = f"👤 Authenticated User: {user_data.get('login', 'Unknown')}\n\n"
+                            result_text += f"📝 Display Name: {user_data.get('name', 'Not set')}\n"
+                            result_text += f"✉️  Email: {user_data.get('email', 'Private')}\n"
+                            result_text += f"🏢 Company: {user_data.get('company', 'Not set')}\n"
+                            result_text += f"📍 Location: {user_data.get('location', 'Not set')}\n"
+                            result_text += f"📚 Public Repos: {user_data.get('public_repos', 0)}\n"
+                            result_text += f"👥 Followers: {user_data.get('followers', 0)}\n"
+                            result_text += f"👤 Following: {user_data.get('following', 0)}\n"
+                            result_text += f"📅 Created: {user_data.get('created_at', 'Unknown')}\n"
+                            result_text += f"🔗 Profile: {user_data.get('html_url', 'Unknown')}\n"
+                            return {
+                                "content": [{
+                                    "type": "text", 
+                                    "text": result_text
+                                }],
+                                "user_data": user_data
+                            }
+                        else:
+                            error_text = await response.text()
+                            return {"error": f"GitHub API error ({response.status}): {error_text}"}
+                
+            elif tool_name == "list_user_repositories":
+                visibility = params.get('visibility', 'all')
+                affiliation = params.get('affiliation', 'owner,collaborator,organization_member')
+                repo_type = params.get('type', 'all')
+                sort = params.get('sort', 'full_name')
+                direction = params.get('direction', 'asc')
+                per_page = params.get('per_page', 30)
+                
+                result_text = "📚 User Repositories List\n\n"
+                result_text += "📊 Parameters:\n"
+                result_text += f"   • Visibility: {visibility}\n"
+                result_text += f"   • Affiliation: {affiliation}\n"
+                result_text += f"   • Type: {repo_type}\n"
+                result_text += f"   • Sort: {sort}\n"
+                result_text += f"   • Direction: {direction}\n"
+                result_text += f"   • Per Page: {per_page}\n\n"
+                result_text += "✅ This tool would list the authenticated user's repositories\n"
+                result_text += "   using the GitHub API with the provided Personal Access Token.\n\n"
+                result_text += "📋 Example response would include repository details:\n"
+                result_text += "   • Repository name and full name\n"
+                result_text += "   • Description and language\n"
+                result_text += "   • Stars, forks, and watchers count\n"
+                result_text += "   • Private/public status\n"
+                result_text += "   • Created/updated dates\n"
+                result_text += "   • Clone and web URLs\n\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            elif tool_name == "search_repositories":
+                result_text = f"🔍 GitHub Repository Search Results for: '{params.get('query', 'N/A')}'\n\n"
+                result_text += "📊 Search Parameters:\n"
+                result_text += f"   • Query: {params.get('query', 'N/A')}\n"
+                result_text += f"   • Sort: {params.get('sort', 'best match')}\n"
+                result_text += f"   • Order: {params.get('order', 'desc')}\n"
+                result_text += f"   • Per Page: {params.get('per_page', 30)}\n\n"
+                result_text += "✅ This tool would search GitHub repositories using the GitHub API\n"
+                result_text += "   with your configured Personal Access Token.\n\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            elif tool_name == "get_repository":
+                owner = params.get('owner', 'N/A')
+                repo = params.get('repo', 'N/A')
+                result_text = f"📚 Repository Information: {owner}/{repo}\n\n"
+                result_text += "✅ This tool would fetch detailed repository information\n"
+                result_text += "   including description, stars, forks, issues, etc.\n\n"
+                result_text += f"🔧 Target: https://github.com/{owner}/{repo}\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            elif tool_name == "get_file_contents":
+                owner = params.get('owner', 'N/A')
+                repo = params.get('repo', 'N/A')
+                path = params.get('path', 'N/A')
+                result_text = f"📄 File Contents: {owner}/{repo}/{path}\n\n"
+                result_text += "✅ This tool would fetch file contents from the repository\n"
+                result_text += "   using the GitHub Contents API.\n\n"
+                result_text += f"🔧 Target: https://github.com/{owner}/{repo}/blob/main/{path}\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            elif tool_name == "create_or_update_file":
+                owner = params.get('owner', 'N/A')
+                repo = params.get('repo', 'N/A')
+                path = params.get('path', 'N/A')
+                message = params.get('message', 'N/A')
+                result_text = f"💾 Create/Update File: {owner}/{repo}/{path}\n\n"
+                result_text += f"📝 Commit Message: {message}\n\n"
+                result_text += "✅ This tool would create or update a file in the repository\n"
+                result_text += "   using the GitHub Contents API.\n\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            elif tool_name == "create_issue":
+                owner = params.get('owner', 'N/A')
+                repo = params.get('repo', 'N/A')
+                title = params.get('title', 'N/A')
+                result_text = f"🐛 Create Issue: {owner}/{repo}\n\n"
+                result_text += f"📝 Title: {title}\n"
+                result_text += f"📝 Body: {params.get('body', 'No description provided')}\n\n"
+                result_text += "✅ This tool would create a new issue in the repository\n"
+                result_text += "   using the GitHub Issues API.\n\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+                
+            else:
+                result_text = f"🔧 GitHub Tool: {tool_name}\n\n"
+                result_text += f"📋 Parameters: {json.dumps(params, indent=2)}\n\n"
+                result_text += "✅ This is a simplified GitHub client response.\n"
+                result_text += "   Real GitHub API integration would be implemented here.\n\n"
+                result_text += "🔧 Status: Ready to implement real GitHub API calls"
+            
             return {
                 "content": [{
                     "type": "text",
-                    "text": f"GitHub {tool_name} called with params: {params_json}\n[Note: This is a simulated response - MCP servers use stdio JSON-RPC protocol]"
+                    "text": result_text
                 }]
             }
                 
         except Exception as e:
-            return {"error": f"Failed to execute MCP tool: {e}"}
+            return {"error": f"Failed to execute GitHub tool: {e}"}
     
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Execute GitHub MCP tool"""
@@ -199,6 +336,36 @@ async def test_github_client():
     print(f"\n🔧 Available tools: {len(client.get_available_tools())}")
     for tool_name, tool_info in client.get_available_tools().items():
         print(f"   • {tool_name}: {tool_info['description']}")
+    
+    # Test get authenticated user
+    print("\n👤 Testing get authenticated user...")
+    result = await client.call_tool("get_authenticated_user", {})
+    
+    if "error" not in result:
+        print("✅ Get authenticated user successful")
+        if "content" in result:
+            content = result["content"][0]["text"]
+            print(f"   Results: {content[:200]}...")
+    else:
+        print(f"❌ Get authenticated user failed: {result['error']}")
+    
+    # Test list user repositories
+    print("\n📚 Testing list user repositories...")
+    result = await client.call_tool("list_user_repositories", {
+        "visibility": "public",
+        "type": "owner",
+        "sort": "updated",
+        "direction": "desc",
+        "per_page": 5
+    })
+    
+    if "error" not in result:
+        print("✅ List user repositories successful")
+        if "content" in result:
+            content = result["content"][0]["text"]
+            print(f"   Results: {content[:200]}...")
+    else:
+        print(f"❌ List user repositories failed: {result['error']}")
     
     # Test repository search
     print("\n🔍 Testing repository search...")

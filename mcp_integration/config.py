@@ -151,6 +151,21 @@ MCP_SERVERS = {
                     "message": "Commit message (required)"
                 }
             },
+            "get_authenticated_user": {
+                "description": "Get the authenticated user's information",
+                "parameters": {}
+            },
+            "list_user_repositories": {
+                "description": "List repositories for the authenticated user",
+                "parameters": {
+                    "visibility": "Repository visibility: all, public, private (optional, default all)",
+                    "affiliation": "Relationship to repos: owner, collaborator, organization_member (optional, default owner,collaborator,organization_member)",
+                    "type": "Repository type: all, owner, public, private, member (optional, default all)",
+                    "sort": "Sort by created, updated, pushed, full_name (optional, default full_name)",
+                    "direction": "Sort direction: asc or desc (optional, default asc)",
+                    "per_page": "Results per page (optional, default 30, max 100)"
+                }
+            },
             "search_repositories": {
                 "description": "Search GitHub repositories",
                 "parameters": {
