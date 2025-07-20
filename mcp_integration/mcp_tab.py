@@ -162,6 +162,28 @@ async def render_mcp_tab() -> None:
     if "brave_local_search" in server_tools:
         quick_actions.append("Search for local businesses")
     
+    # Add GitHub actions
+    if "create_or_update_file" in server_tools:
+        quick_actions.append("Create or update a file in a repository")
+    if "push_files" in server_tools:
+        quick_actions.append("Push multiple files to a repository")
+    if "search_repositories" in server_tools:
+        quick_actions.append("Search GitHub repositories")
+    if "create_issue" in server_tools:
+        quick_actions.append("Create a new issue")
+    if "create_pull_request" in server_tools:
+        quick_actions.append("Open a pull request")
+    if "list_issues" in server_tools:
+        quick_actions.append("List repository issues")
+    if "get_file_contents" in server_tools:
+        quick_actions.append("Get contents of a file from repository")
+    if "create_repository" in server_tools:
+        quick_actions.append("Create a new repository")
+    if "fork_repository" in server_tools:
+        quick_actions.append("Fork a repository")
+    if "create_branch" in server_tools:
+        quick_actions.append("Create a new branch")
+    
     # Create columns for better layout
     col1, col2 = st.columns([3, 1])
     

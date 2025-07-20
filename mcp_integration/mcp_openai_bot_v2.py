@@ -125,6 +125,20 @@ You can help users with:
 - Local business search
 
 When performing searches, always provide clear, formatted results with titles, URLs, and descriptions."""
+            elif self.selected_server == "github":
+                server_context = f"""You are an AI assistant with access to GitHub tools via MCP (Model Context Protocol).
+
+You can help users with:
+- Creating or updating files in repositories
+- Pushing multiple files in one commit
+- Searching repositories, code, issues
+- Creating repositories, branches, issues and PRs
+- Forking repos or commenting on issues
+- Managing repository content and operations
+
+Always confirm repository owners/names before destructive actions.
+Return URLs, commit SHAs or issue numbers for every operation.
+When working with files, show the file path and provide relevant GitHub URLs."""
             else:
                 server_context = f"""You are an AI assistant with access to {server_info.get('name', 'MCP')} tools via MCP (Model Context Protocol).
 
