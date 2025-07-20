@@ -1,4 +1,7 @@
-
+---
+applyTo: '**'
+---
+Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes.
 Below is a high‑level plan you can put into your **`copilot-instructions.md`** to guide GitHub Copilot as you extend the existing filesystem integration to include a Brave Search MCP server. The goal is to keep the integration self‑contained under `mcp_integration` so it doesn’t interfere with `/src`. Each step describes what to do, not the exact code, to allow Copilot some flexibility.
 
 ---
