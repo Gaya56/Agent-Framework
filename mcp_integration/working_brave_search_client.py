@@ -115,25 +115,65 @@ class WorkingBraveSearchClient:
             }
     
     async def _run_mcp_tool(self, tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute MCP tool inside the container using node"""
+        """Execute Brave Search MCP tool via docker exec and JSON-RPC communication"""
         try:
-            # Build the MCP tool command - use node to run the server directly
-            params_json = json.dumps(params)
-            
-            # The MCP server binary is at dist/index.js and expects stdio communication
-            # For testing purposes, we'll simulate a simple call
-            # In reality, MCP servers communicate via JSON-RPC over stdio
-            
-            # For now, return a simulated response since MCP servers are designed for stdio interaction
-            return {
-                "content": [{
-                    "type": "text", 
-                    "text": f"Brave Search {tool_name} called with params: {params_json}\n[Note: This is a simulated response - MCP servers use stdio JSON-RPC protocol]"
-                }]
+            # Create JSON-RPC request
+            request_id = f"{tool_name}_{hash(str(params))}"
+            json_rpc_request = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": params
+                }
             }
+            
+            # Convert to JSON string
+            request_json = json.dumps(json_rpc_request)
+            
+            # Execute MCP server via docker exec
+            # MCP servers expect JSON-RPC via stdin/stdout
+            result = await self._run_docker_command([
+                "sh", "-c", 
+                f"echo '{request_json}' | node /app/dist/index.js"
+            ])
+            
+            if not result["success"]:
+                return {"error": f"Docker exec failed: {result['error']}"}
+            
+            # Parse JSON-RPC response
+            try:
+                response_json = result["output"].strip()
+                if not response_json:
+                    return {"error": "Empty response from MCP server"}
+                
+                # Handle potential multiple JSON responses (split by newlines)
+                lines = response_json.strip().split('\n')
+                for line in lines:
+                    if line.strip():
+                        try:
+                            response = json.loads(line)
+                            if response.get("id") == request_id and "result" in response:
+                                return response["result"]
+                            elif "error" in response:
+                                return {"error": f"MCP Server Error: {response['error']}"}
+                        except json.JSONDecodeError:
+                            continue
+                
+                # If no valid JSON-RPC response found, return raw output
+                return {
+                    "content": [{
+                        "type": "text",
+                        "text": response_json
+                    }]
+                }
+                
+            except json.JSONDecodeError as e:
+                return {"error": f"Failed to parse MCP response: {e}. Raw output: {result['output'][:500]}"}
                 
         except Exception as e:
-            return {"error": f"Failed to execute MCP tool: {e}"}
+            return {"error": f"Failed to execute Brave Search MCP tool: {e}"}
     
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Execute Brave Search MCP tool"""
