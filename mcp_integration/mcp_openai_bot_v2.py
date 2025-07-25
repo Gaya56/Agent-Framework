@@ -18,11 +18,11 @@ class MCPOpenAIBot:
         # Initialize OpenAI client
         self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
         
-        # Use provided MCP client or create a new one
-        self.mcp_client = mcp_client if mcp_client is not None else MultiMCPClient()
-        self.mcp_ready = False
-        self.selected_server = selected_server  # Use the selected server instead of default
+        # Set up MCP server selection
+        self.selected_server = selected_server
+        self.mcp_client = mcp_client or MultiMCPClient()
         self._owns_mcp_client = mcp_client is None  # Track if we created the client
+        self.mcp_ready = False
         
     async def initialize(self):
         """Initialize MCP connection"""
@@ -52,6 +52,7 @@ class MCPOpenAIBot:
     
     def _create_openai_tools(self):
         """Convert MCP tools to OpenAI function format"""
+        # Convert MCP tools to OpenAI format
         mcp_tools = self.get_available_tools()
         openai_tools = []
         
@@ -60,12 +61,28 @@ class MCPOpenAIBot:
             properties = {}
             required = []
             
-            for param_name, param_desc in tool_info["parameters"].items():
-                properties[param_name] = {
-                    "type": "string",
-                    "description": param_desc
-                }
-                required.append(param_name)
+            # Handle both old and new format
+            if isinstance(tool_info.get("parameters"), dict):
+                for param_name, param_desc in tool_info["parameters"].items():
+                    if isinstance(param_desc, str):
+                        # Old format: parameter is just a description string
+                        is_required = "optional" not in param_desc.lower()
+                        properties[param_name] = {
+                            "type": "string",
+                            "description": param_desc
+                        }
+                        if is_required:
+                            required.append(param_name)
+                    elif isinstance(param_desc, dict):
+                        # New format: parameter is a schema object
+                        properties[param_name] = {
+                            "type": param_desc.get("type", "string"),
+                            "description": param_desc.get("description", "")
+                        }
+                        # For new format, we need to check the tool's required array
+                        # For now, assume all are required unless marked optional
+                        if "optional" not in param_desc.get("description", "").lower():
+                            required.append(param_name)
             
             function_def = {
                 "type": "function",
@@ -88,6 +105,7 @@ class MCPOpenAIBot:
         if not self.mcp_ready:
             return "MCP tools are not available"
         
+        # Call the MCP tool
         result = await self.mcp_client.call_tool(self.selected_server, tool_name, arguments)
         
         if "error" in result:
@@ -130,20 +148,6 @@ You can help users with:
 - Local business search
 
 When performing searches, always provide clear, formatted results with titles, URLs, and descriptions."""
-            elif self.selected_server == "github":
-                server_context = f"""You are an AI assistant with access to GitHub tools via MCP (Model Context Protocol).
-
-You can help users with:
-- Creating or updating files in repositories
-- Pushing multiple files in one commit
-- Searching repositories, code, issues
-- Creating repositories, branches, issues and PRs
-- Forking repos or commenting on issues
-- Managing repository content and operations
-
-Always confirm repository owners/names before destructive actions.
-Return URLs, commit SHAs or issue numbers for every operation.
-When working with files, show the file path and provide relevant GitHub URLs."""
             else:
                 server_context = f"""You are an AI assistant with access to {server_info.get('name', 'MCP')} tools via MCP (Model Context Protocol).
 
@@ -220,7 +224,7 @@ Selected Server: {server_info.get('name', self.selected_server)}
             return f"Error: {e}"
     
     async def close(self):
-        """Close MCP connection only if we own it"""
+        """Close MCP connection if we own it"""
         if self.mcp_client and self._owns_mcp_client:
             await self.mcp_client.close()
 

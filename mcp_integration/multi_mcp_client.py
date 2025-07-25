@@ -7,7 +7,6 @@ from typing import Any
 from config import get_enabled_servers
 from working_mcp_client import WorkingMCPClient  
 from working_brave_search_client import WorkingBraveSearchClient
-from working_github_client import WorkingGitHubClient
 
 
 class MCPServerClient:
@@ -25,8 +24,6 @@ class MCPServerClient:
             self.working_client = WorkingMCPClient()
         elif server_id == "brave_search":
             self.working_client = WorkingBraveSearchClient()
-        elif server_id == "github":
-            self.working_client = WorkingGitHubClient()
         else:
             self.working_client = None
         

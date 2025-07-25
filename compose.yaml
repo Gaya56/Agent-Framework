@@ -112,16 +112,5 @@ services:
     stdin_open: true
     tty: true
 
-  mcp-github:
-    container_name: agent-framework-mcp-github-1
-    image: mcp/github:latest
-    env_file:
-      - .env
-    environment:
-      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-
 volumes:
   postgres_data:

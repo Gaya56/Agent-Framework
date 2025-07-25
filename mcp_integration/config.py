@@ -15,7 +15,6 @@ load_dotenv(env_path)
 # Configuration settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
-GITHUB_PERSONAL_ACCESS_TOKEN = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
 
 # MCP Server configurations
 MCP_SERVERS = {
@@ -120,170 +119,6 @@ MCP_SERVERS = {
                 }
             }
         }
-    },
-    "github": {
-        "name": "GitHub",
-        "description": "GitHub API operations - repos, issues, files, PRs",
-        "container_name": os.getenv("MCP_GITHUB_CONTAINER_NAME", "agent-framework-mcp-github-1"),
-        "server_path": "/",
-        "icon": "🐙",
-        "enabled": True,
-        "tools": {
-            "create_or_update_file": {
-                "description": "Create or update a single file in a repository",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "path": "File path (required)",
-                    "content": "File content (required)",
-                    "message": "Commit message (required)",
-                    "branch": "Target branch (optional)",
-                    "sha": "SHA of existing file (optional, for updates)"
-                }
-            },
-            "push_files": {
-                "description": "Push multiple files to a repository in a single commit",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "branch": "Target branch (required)",
-                    "files": "Array of file objects with path and content (required)",
-                    "message": "Commit message (required)"
-                }
-            },
-            "get_authenticated_user": {
-                "description": "Get the authenticated user's information",
-                "parameters": {}
-            },
-            "list_user_repositories": {
-                "description": "List repositories for the authenticated user",
-                "parameters": {
-                    "visibility": "Repository visibility: all, public, private (optional, default all)",
-                    "affiliation": "Relationship to repos: owner, collaborator, organization_member (optional, default owner,collaborator,organization_member)",
-                    "type": "Repository type: all, owner, public, private, member (optional, default all)",
-                    "sort": "Sort by created, updated, pushed, full_name (optional, default full_name)",
-                    "direction": "Sort direction: asc or desc (optional, default asc)",
-                    "per_page": "Results per page (optional, default 30, max 100)"
-                }
-            },
-            "search_repositories": {
-                "description": "Search GitHub repositories",
-                "parameters": {
-                    "query": "Search query (required)",
-                    "sort": "Sort by stars, forks, updated (optional)",
-                    "order": "Sort order: asc or desc (optional)",
-                    "per_page": "Results per page (optional, default 30)"
-                }
-            },
-            "create_repository": {
-                "description": "Create a new repository",
-                "parameters": {
-                    "name": "Repository name (required)",
-                    "description": "Repository description (optional)",
-                    "private": "Whether repository is private (optional, default false)",
-                    "auto_init": "Initialize with README (optional, default false)"
-                }
-            },
-            "get_file_contents": {
-                "description": "Get the contents of a file in a repository",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "path": "File path (required)",
-                    "ref": "Branch, tag, or commit SHA (optional, default main branch)"
-                }
-            },
-            "create_issue": {
-                "description": "Create a new issue in a repository",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "title": "Issue title (required)",
-                    "body": "Issue body/description (optional)",
-                    "labels": "Array of label names (optional)",
-                    "assignees": "Array of usernames to assign (optional)"
-                }
-            },
-            "create_pull_request": {
-                "description": "Create a new pull request",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "title": "Pull request title (required)",
-                    "head": "Head branch (required)",
-                    "base": "Base branch (required)",
-                    "body": "Pull request body/description (optional)",
-                    "draft": "Whether PR is a draft (optional, default false)"
-                }
-            },
-            "fork_repository": {
-                "description": "Fork a repository",
-                "parameters": {
-                    "owner": "Original repository owner (required)",
-                    "repo": "Original repository name (required)",
-                    "organization": "Organization to fork to (optional)"
-                }
-            },
-            "create_branch": {
-                "description": "Create a new branch",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "ref": "New branch name (required)",
-                    "sha": "SHA to branch from (required)"
-                }
-            },
-            "list_issues": {
-                "description": "List issues in a repository",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "state": "Issue state: open, closed, all (optional, default open)",
-                    "labels": "Comma-separated list of labels (optional)",
-                    "sort": "Sort by created, updated, comments (optional)",
-                    "direction": "Sort direction: asc or desc (optional)"
-                }
-            },
-            "update_issue": {
-                "description": "Update an existing issue",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "issue_number": "Issue number (required)",
-                    "title": "Issue title (optional)",
-                    "body": "Issue body (optional)",
-                    "state": "Issue state: open or closed (optional)",
-                    "labels": "Array of label names (optional)"
-                }
-            },
-            "add_issue_comment": {
-                "description": "Add a comment to an issue",
-                "parameters": {
-                    "owner": "Repository owner (required)",
-                    "repo": "Repository name (required)",
-                    "issue_number": "Issue number (required)",
-                    "body": "Comment body (required)"
-                }
-            },
-            "search_code": {
-                "description": "Search code in repositories",
-                "parameters": {
-                    "query": "Search query (required)",
-                    "sort": "Sort by indexed (optional)",
-                    "order": "Sort order: asc or desc (optional)",
-                    "per_page": "Results per page (optional, default 30)"
-                }
-            },
-            "search_issues": {
-                "description": "Search issues and pull requests",
-                "parameters": {
-                    "query": "Search query (required)",
-                    "sort": "Sort by created, updated, comments (optional)",
-                    "order": "Sort order: asc or desc (optional)",
-                    "per_page": "Results per page (optional, default 30)"
-                }
-            }
-        }
     }
 }
 
@@ -294,10 +129,6 @@ if not OPENAI_API_KEY:
 # Validate Brave API key if Brave Search is enabled
 if MCP_SERVERS.get("brave_search", {}).get("enabled", False) and not BRAVE_API_KEY:
     print("⚠️ Warning: BRAVE_API_KEY is not set but Brave Search is enabled. Please set it in .env file.")
-
-# Validate GitHub Personal Access Token if GitHub is enabled
-if MCP_SERVERS.get("github", {}).get("enabled", False) and not GITHUB_PERSONAL_ACCESS_TOKEN:
-    print("⚠️ Warning: GITHUB_PERSONAL_ACCESS_TOKEN is not set but GitHub is enabled. Please set it in .env file.")
 
 # Get enabled servers
 def get_enabled_servers() -> dict[str, dict[str, Any]]:
@@ -316,4 +147,3 @@ for server_id, config in enabled_servers.items():
     print(f"     • {config['icon']} {config['name']} ({server_id})")
 print(f"   - OpenAI API Key: {'✅ Set' if OPENAI_API_KEY else '❌ Missing'}")
 print(f"   - Brave API Key: {'✅ Set' if BRAVE_API_KEY else '❌ Missing'}")
-print(f"   - GitHub Token: {'✅ Set' if GITHUB_PERSONAL_ACCESS_TOKEN else '❌ Missing'}")
