@@ -6,22 +6,24 @@ without the TaskGroup errors we encountered with stdio_client.
 import asyncio
 from typing import Any
 
-from config import get_enabled_servers
 
-
-class WorkingMCPClient:
+class FilesystemClient:
     """
     MCP client that uses docker exec to communicate with MCP containers.
     This avoids asyncio TaskGroup issues while providing reliable MCP access.
     """
     
-    def __init__(self):
-        # Get filesystem config from enabled servers
-        enabled_servers = get_enabled_servers()
-        filesystem_config = enabled_servers.get("filesystem", {})
+    def __init__(self, config: dict[str, Any] | None = None):
+        # Accept configuration as parameter to avoid circular imports
+        if config is None:
+            # Fallback to default values if no config provided
+            config = {
+                "container_name": "agent-framework-mcp-filesystem-1",
+                "server_path": "/projects"
+            }
         
-        self.container_name = filesystem_config.get("container_name", "agent-framework-mcp-filesystem-1")
-        self.server_path = filesystem_config.get("server_path", "/projects")
+        self.container_name = config.get("container_name", "agent-framework-mcp-filesystem-1")
+        self.server_path = config.get("server_path", "/projects")
         self.is_initialized = False
         self.available_tools = {
             "list_directory": {
@@ -258,7 +260,7 @@ async def test_working_client():
     print("🧪 Testing Working MCP Client")
     print("=" * 50)
     
-    client = WorkingMCPClient()
+    client = FilesystemClient()
     
     # Initialize
     success = await client.initialize()

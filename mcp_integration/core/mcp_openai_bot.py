@@ -7,8 +7,8 @@ import json
 from datetime import datetime
 
 import openai
-from config import OPENAI_API_KEY
-from multi_mcp_client import MultiMCPClient
+from .config import OPENAI_API_KEY
+from .multi_client import MultiMCPClient
 
 
 class MCPOpenAIBot:

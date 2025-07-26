@@ -1,19 +1,12 @@
-name: "brave-search"
-version: "1.0.0"
-description: "Web, image, video and news search via Brave API"
+name: "Brave Search"
+description: "Web, image, video and news search via Brave Search API"
+container_name: "agent-framework-mcp-brave-search-1"
+server_path: "/"
 icon: "🔍"
 enabled: true
-priority: 2  # after filesystem
-
-container:
-  name: "agent-framework-mcp-brave-search-1"
-  image: "mcp/brave-search:latest"  # use official image
-  ports: []  # Brave Search server communicates via stdio, no HTTP ports needed
-  environment:
-    - "BRAVE_API_KEY=${BRAVE_API_KEY}"
-
+client_class: "mcp_integration.clients.brave_search_client.BraveSearchClient"
 tools:
-  - name: "brave_web_search"
+  brave_web_search:
     description: "Perform a web search using Brave Search API"
     parameters:
       query: "Search query (required)"
@@ -21,36 +14,29 @@ tools:
       safesearch: "off | moderate | strict (optional, default moderate)"
       freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
       
-  - name: "brave_image_search"
+  brave_image_search:
     description: "Search for images using Brave Search API"
     parameters:
       query: "Search query (required)"
       count: "Number of results (optional, default 3)"
       safesearch: "off | strict (optional, default moderate)"
       
-  - name: "brave_video_search"
+  brave_video_search:
     description: "Search for videos using Brave Search API"
     parameters:
       query: "Search query (required)"
       count: "Number of results (optional, default 10)"
       freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
       
-  - name: "brave_news_search"
+  brave_news_search:
     description: "Search for news articles using Brave Search API"
     parameters:
       query: "Search query (required)"
       count: "Number of results (optional, default 10)"
       freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
       
-  - name: "brave_local_search"
+  brave_local_search:
     description: "Search for local businesses and places"
     parameters:
       query: "Local search query (required)"
       count: "Number of results (optional, default 10)"
-
-dependencies: []
-health_check:
-  endpoint: ""  # Brave Search server doesn't expose HTTP health endpoint
-  interval: 30
-  timeout: 10
-  retries: 3

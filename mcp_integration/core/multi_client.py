@@ -4,28 +4,19 @@ This replaces the single working_mcp_client with a flexible multi-server approac
 """
 from typing import Any
 
-from config import get_enabled_servers
-from working_mcp_client import WorkingMCPClient  
-from working_brave_search_client import WorkingBraveSearchClient
+from .plugin_manager import load_plugins
 
 
 class MCPServerClient:
     """Individual MCP server client"""
     
-    def __init__(self, server_id: str, config: dict[str, Any]):
+    def __init__(self, server_id: str, config: dict[str, Any], client_class: type):
         self.server_id = server_id
         self.config = config
-        self.container_name = config["container_name"]
-        self.server_path = config["server_path"]
+        self.container_name = config.get("container_name")
+        self.server_path = config.get("server_path")
+        self.working_client = client_class(config)
         self.is_initialized = False
-        
-        # Initialize the appropriate working client based on server type
-        if server_id == "filesystem":
-            self.working_client = WorkingMCPClient()
-        elif server_id == "brave_search":
-            self.working_client = WorkingBraveSearchClient()
-        else:
-            self.working_client = None
         
     async def initialize(self) -> bool:
         """Initialize connection to MCP container"""
@@ -92,21 +83,26 @@ class MultiMCPClient:
         try:
             print("🔄 Initializing Multi-MCP Client...")
             
-            enabled_servers = get_enabled_servers()
-            if not enabled_servers:
-                print("⚠️ No enabled MCP servers found")
+            plugins = load_plugins()
+            if not plugins:
+                print("⚠️ No plugins found")
                 return False
             
-            # Initialize each server
-            for server_id, config in enabled_servers.items():
-                server_client = MCPServerClient(server_id, config)
+            # Initialize each enabled plugin
+            for server_id, config in plugins.items():
+                if not config.get("enabled"):
+                    print(f"⏭️ Skipping disabled plugin: {server_id}")
+                    continue
+                
+                client_class = config["client_class"]
+                server_client = MCPServerClient(server_id, config, client_class)
                 success = await server_client.initialize()
                 
                 if success:
                     self.servers[server_id] = server_client
-                    print(f"✅ {config['name']} ready")
+                    print(f"✅ {config.get('name', server_id)} ready")
                 else:
-                    print(f"❌ {config['name']} failed to initialize")
+                    print(f"❌ {config.get('name', server_id)} failed to initialize")
             
             if self.servers:
                 print(f"✅ Multi-MCP Client initialized with {len(self.servers)} servers")

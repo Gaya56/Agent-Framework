@@ -6,22 +6,24 @@ import asyncio
 import json
 from typing import Any
 
-from config import get_enabled_servers
 
-
-class WorkingBraveSearchClient:
+class BraveSearchClient:
     """
     Brave Search MCP client that uses docker exec to communicate with Brave Search container.
     This follows the same reliable pattern as the filesystem client.
     """
     
-    def __init__(self):
-        # Get brave search config from enabled servers
-        enabled_servers = get_enabled_servers()
-        brave_config = enabled_servers.get("brave_search", {})
+    def __init__(self, config: dict[str, Any] | None = None):
+        # Accept configuration as parameter to avoid circular imports
+        if config is None:
+            # Fallback to default values if no config provided
+            config = {
+                "container_name": "agent-framework-mcp-brave-search-1",
+                "server_path": "/app"
+            }
         
-        self.container_name = brave_config.get("container_name", "agent-framework-mcp-brave-search-1")
-        self.server_path = brave_config.get("server_path", "/app")
+        self.container_name = config.get("container_name", "agent-framework-mcp-brave-search-1")
+        self.server_path = config.get("server_path", "/app")
         self.is_initialized = False
         self.available_tools = {
             "brave_web_search": {
@@ -206,7 +208,7 @@ async def test_brave_search_client():
     print("🧪 Testing Brave Search MCP Client")
     print("=" * 50)
     
-    client = WorkingBraveSearchClient()
+    client = BraveSearchClient()
     
     # Initialize
     success = await client.initialize()
