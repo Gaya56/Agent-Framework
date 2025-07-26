@@ -39,15 +39,16 @@ async def render_mcp_tab() -> None:
     # Draw existing MCP messages (following streamlit_app.py pattern)
     messages: list[ChatMessage] = st.session_state.mcp_messages
 
-    # Display existing messages using helper
-    await draw_mcp_messages(amessage_iter(messages))
+    # Display existing messages inside collapsible panel
+    with st.expander("Conversation history", expanded=True):
+        await draw_mcp_messages(amessage_iter(messages))
 
     # Quick action selector
     st.subheader(f"� {current_server_info.get('name', 'MCP Server')}")
     
     # Create dynamic quick actions based on available tools using helper
     server_tools = current_server_info.get("tools", [])
-    quick_actions = build_quick_actions(server_tools)
+    quick_actions = [(action, action) for action in build_quick_actions(server_tools)]
     
     # Create columns for better layout
     col1, col2 = st.columns([3, 1])
@@ -56,17 +57,19 @@ async def render_mcp_tab() -> None:
         quick_action = st.selectbox(
             "Choose an action:",
             quick_actions,
+            format_func=lambda x: x[0],
             key="mcp_quick_action",
         )
     
     with col2:
         if st.button("Execute", use_container_width=True, type="primary"):
-            await handle_quick_action(
-                quick_action,
-                mcp_client,
-                st.session_state.selected_mcp_server,
-                messages,
-            )
+            with st.spinner("Processing…"):
+                await handle_quick_action(
+                    quick_action[1],
+                    mcp_client,
+                    st.session_state.selected_mcp_server,
+                    messages,
+                )
 
     # Handle new user input (following streamlit_app.py pattern)
     if user_input := st.chat_input("Type your request..."):
@@ -78,12 +81,13 @@ async def render_mcp_tab() -> None:
             
             try:
                 # Process with MCP (simplified - no streaming for now)
-                ai_response = await process_mcp_message(
-                    user_input, 
-                    mcp_client, 
-                    st.session_state.selected_mcp_server,
-                    messages
-                )
+                with st.spinner("Processing…"):
+                    ai_response = await process_mcp_message(
+                        user_input, 
+                        mcp_client, 
+                        st.session_state.selected_mcp_server,
+                        messages
+                    )
                 
                 # Add AI response
                 ai_message = ChatMessage(type="ai", content=ai_response)

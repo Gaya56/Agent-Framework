@@ -1,9 +1,15 @@
 """Sidebar rendering for the MCP tab."""
-import uuid, streamlit as st
+import uuid
+import streamlit as st
 
 async def render_sidebar(mcp_client, st_state) -> str:
     """Build the sidebar, return selected server ID, update session."""
     with st.sidebar:
+        # Accessibility and contrast tweaks
+        st.markdown(
+            "<style>.sidebar .st-expanderHeader{font-size:1.1em;font-weight:bold;}</style>",
+            unsafe_allow_html=True,
+        )
         st.subheader("🛠️ MCP Servers")
         if st.button(":material/chat: New MCP Chat", use_container_width=True):
             st_state.mcp_messages = []
@@ -27,7 +33,10 @@ async def render_sidebar(mcp_client, st_state) -> str:
             st_state.selected_mcp_server = selected; st.rerun()
 
         info = available[selected]
-        with st.expander(f"📋 {info['name']} Tools", expanded=True):
+        with st.expander(
+            f"📋 {info['name']} Tools",
+            expanded=True,
+        ):
             st.write(f"**{info['description']}**")
             st.write(f"**{len(info['tools'])} tools available:**")
             shown = info['tools'][:8]
