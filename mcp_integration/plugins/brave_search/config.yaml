@@ -1,42 +1,38 @@
 name: "Brave Search"
-description: "Web, image, video and news search via Brave Search API"
+description: "Web, image, video and news search via Brave API"
 container_name: "agent-framework-mcp-brave-search-1"
-server_path: "/"
+server_path: "/app"
 icon: "🔍"
 enabled: true
 client_class: "mcp_integration.clients.brave_search_client.BraveSearchClient"
 tools:
   brave_web_search:
-    description: "Perform a web search using Brave Search API"
+    description: "Perform a web search"
     parameters:
-      query: "Search query (required)"
-      count: "Number of results (optional, default 10)"
-      safesearch: "off | moderate | strict (optional, default moderate)"
-      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
-      
+      query: "Search term"
+      count: "Number of results"
+      safesearch: "Search safety level"
+      freshness: "Time filter"
   brave_image_search:
-    description: "Search for images using Brave Search API"
+    description: "Search for images"
     parameters:
-      query: "Search query (required)"
-      count: "Number of results (optional, default 3)"
-      safesearch: "off | strict (optional, default moderate)"
-      
+      searchTerm: "Search term"
+      count: "Number of images"
+      safesearch: "Search safety level"
   brave_video_search:
-    description: "Search for videos using Brave Search API"
+    description: "Search for videos"
     parameters:
-      query: "Search query (required)"
-      count: "Number of results (optional, default 10)"
-      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
-      
+      query: "Search term"
+      count: "Number of results"
+      freshness: "Time filter"
   brave_news_search:
-    description: "Search for news articles using Brave Search API"
+    description: "Search for news articles"
     parameters:
-      query: "Search query (required)"
-      count: "Number of results (optional, default 10)"
-      freshness: "pd | pw | pm | py for past day/week/month/year (optional)"
-      
+      query: "Search term"
+      count: "Number of results"
+      freshness: "Time filter"
   brave_local_search:
-    description: "Search for local businesses and places"
+    description: "Search for local businesses"
     parameters:
-      query: "Local search query (required)"
-      count: "Number of results (optional, default 10)"
+      query: "Search term"
+      count: "Number of listings"
