@@ -3,9 +3,112 @@ applyTo: '*/workspaces/Agent-Framework/mcp_integration*'
 ---
 Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes.### Overview
 
+
 The `ui-upgrade-2` branch currently attempts to inject CSS directly in `mcp_integration/ui/mcp_tab.py`, but the CSS block is missing `<style>` tags and there are no matching elements for the rules.  This results in a blank “Conversation History” region and no sticky input bar.  To centralize styling and achieve a clean chat-like layout, we can separate the CSS into its own module, import it, and wrap the UI elements in identifiable containers.
 
 Below is a detailed, step‑by‑step plan that adds a new CSS module and modifies `render_mcp_tab` to use it.  Every file path, new import, and code change is shown with contextual line numbers from the current `ui-upgrade-2` branch.
+
+## overview of steps ### GitHub Copilot MCP Prompt — UI Upgrade (centralized CSS)
+
+*Read first:* `/workspaces/Agent‑Framework/.github/instructions/ui_upgrade-copilot.instructions.md`
+
+**Goal**
+Move all chat‑UI CSS into a new helper, wrap history / input in matching `<div>` IDs, and inject the CSS via `mcp_tab.py`. Wrapper `mcp_integration/mcp_tab.py` must stay untouched.
+
+---
+
+## Step‑by‑Step (1 change per commit)
+
+### **Step 1 – create CSS helper**
+
+1. **filesystem MCP** → write `mcp_integration/ui/css_styles.py` with:
+
+   ```python
+   # mcp_integration/ui/css_styles.py
+   """
+   Centralised chat CSS for the MCP tab.
+   """
+   CHAT_CSS = """
+   <style>
+   #mcp-history-area{
+       overflow-y:auto;
+       height:calc(100vh - 14rem);
+       padding-right:0.5rem;
+   }
+   #mcp-input-area{
+       position:sticky;
+       bottom:0;
+       background:var(--background-color);
+       padding:1rem 0;
+       border-top:1px solid var(--secondary-background-color);
+   }
+   div[data-testid="stExpander"] summary{font-size:1.1rem;}
+   </style>
+   """
+   ```
+
+2. **memory MCP** → log new file.
+
+3. **Pylance MCP** → run lint; expect no errors.
+
+### **Step 2 – import & inject CSS**
+
+1. **filesystem MCP** → edit `mcp_integration/ui/mcp_tab.py`:
+
+   * Add `from .css_styles import CHAT_CSS` after existing imports.
+   * Replace current multi‑line CSS `st.markdown(""" ...`, unsafe\_allow\_html=True)`block with`st.markdown(CHAT\_CSS, unsafe\_allow\_html=True)\`.
+
+2. **memory MCP** → log changed lines.
+
+3. **Pylance MCP** → lint.
+
+### **Step 3 – add `<div id>` wrappers**
+
+1. **filesystem MCP** → in the same file:
+
+   * **History**: replace the two blank markdown placeholders around `await draw_mcp_messages(...)` with:
+
+     ```python
+     st.markdown("<div id='mcp-history-area'>", unsafe_allow_html=True)
+     await draw_mcp_messages(amessage_iter(messages))
+     st.markdown("</div>", unsafe_allow_html=True)
+     ```
+
+   * **Input**: before quick‑action sub‑header add
+     `st.markdown("<div id='mcp-input-area'>", unsafe_allow_html=True)`
+     and after the chat‑input block add
+     `st.markdown("</div>", unsafe_allow_html=True)`.
+
+2. **memory MCP** → log edits.
+
+3. **Pylance MCP** → lint.
+
+### **Step 4 – runtime check**
+
+1. **filesystem MCP** → ensure wrapper file unchanged.
+
+2. Run `python src/streamlit_app.py`, open MCP tab, send a message:
+
+   * Conversation scrolls independently.
+   * Quick‑action & input bar stick to bottom.
+
+3. If layout off, minimally tweak `height: calc(100vh - 14rem);` in `css_styles.py`.
+
+4. **memory MCP** → record any tweak.
+
+### Confirmation protocol
+
+After each numbered step:
+
+* **Re‑run Pylance MCP** and **runtime check**; if both pass, ask:
+  `Step X complete — proceed to Step Y?`
+
+If an error appears, stop, describe the issue, await guidance.
+
+Use **Brave‑Search MCP** only if Streamlit CSS behaviour is uncertain.
+
+---
+
 
 ---
 
