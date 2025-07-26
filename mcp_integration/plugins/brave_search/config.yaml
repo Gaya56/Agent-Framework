@@ -4,7 +4,7 @@ container_name: "agent-framework-mcp-brave-search-1"
 server_path: "/app"
 icon: "🔍"
 enabled: true
-client_class: "mcp_integration.clients.brave_search_client.BraveSearchClient"
+client_class: "clients.brave_search_client.BraveSearchClient"
 tools:
   brave_web_search:
     description: "Perform a web search"
