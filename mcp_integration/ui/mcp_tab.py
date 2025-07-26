@@ -19,6 +19,7 @@ from schema import ChatMessage
 from .message_rendering import amessage_iter, draw_mcp_messages
 from .quick_actions import build_quick_actions, handle_quick_action
 from .chat_processing import process_mcp_message
+from .css_styles import CHAT_CSS
 
 
 async def render_mcp_tab() -> None:
@@ -27,98 +28,87 @@ async def render_mcp_tab() -> None:
     # Initialise session and get MCP client from helper
     from .session_utils import init_mcp_session
     mcp_client = await init_mcp_session(st.session_state)
-
-    # Render sidebar via helper and get selected server
-    from .sidebar import render_sidebar
-    selected_server = await render_sidebar(mcp_client, st.session_state)
-    
-    # Main content area
-    available_servers = mcp_client.get_available_servers()
-    current_server_info = available_servers.get(selected_server or "", {})
     
     # Retrieve existing messages for display
     messages: list[ChatMessage] = st.session_state.mcp_messages
 
-    # CSS injected to make history scrollable and input sticky
-    st.markdown(
-        """
-        <style>
-        #mcp-history-area {
-            overflow-y: auto;
-            height: calc(100vh - 18rem);
-            padding-right: 0.5rem;
-        }
-        #mcp-input-area {
-            position: sticky;
-            bottom: 0;
-            background: var(--background-color);
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-            border-top: 1px solid var(--secondary-background-color);
-        }
-        div[data-testid="stExpander"] summary {
-            font-size: 1.1rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    # Inject centralized CSS for layout, scroll and sticky behaviour.
+    st.markdown(CHAT_CSS, unsafe_allow_html=True)
+
+    # Build the two-column layout using HTML divs for styling hooks
+    st.markdown("<div id='mcp-main'>", unsafe_allow_html=True)
+
+    # --- Sidebar column for server and tool selection ---
+    st.markdown("<div id='mcp-sidebar'>", unsafe_allow_html=True)
+    # Server selection (radio or selectbox)
+    available_servers = mcp_client.get_available_servers()
+    server_names = list(available_servers.keys())
+    # Use st.radio so only one server can be selected at a time
+    selected_server = st.radio(
+        "Select MCP Server",
+        server_names,
+        index=0 if server_names else 0,
+        key="mcp_server_radio",
     )
+    current_server_info = available_servers.get(selected_server or "", {})
+    # Tool selection checkboxes
+    server_tools = current_server_info.get("tools", [])
+    selected_tools = []
+    st.markdown("**Available Tools:**")
+    for tool in server_tools:
+        if st.checkbox(tool, key=f"tool_{tool}"):
+            selected_tools.append(tool)
+    st.markdown("</div>", unsafe_allow_html=True)  # close sidebar
 
-    # Containers to isolate scrollable history and sticky input areas
-    history_area = st.container()
-    input_area = st.container()
-
-    # History container wrapped in an expander
-    with history_area:
-        with st.expander("Conversation history", expanded=True):
-            st.markdown("<div id='mcp-history-area'>", unsafe_allow_html=True)
-            await draw_mcp_messages(amessage_iter(messages))
-            st.markdown("</div>", unsafe_allow_html=True)
-
-    # Input container with quick actions and chat box
-    with input_area:
-        st.markdown("<div id='mcp-input-area'>", unsafe_allow_html=True)
-        st.subheader(f"� {current_server_info.get('name', 'MCP Server')}")
-        server_tools = current_server_info.get("tools", [])
-        quick_actions = [(action, action) for action in build_quick_actions(server_tools)]
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            quick_action = st.selectbox(
-                "Choose an action:",
-                quick_actions,
-                format_func=lambda x: x[0],
-                key="mcp_quick_action",
-            )
-        with col2:
-            if st.button("Execute", use_container_width=True, type="primary"):
+    # --- Chat area column ---
+    st.markdown("<div id='mcp-chat-area'>", unsafe_allow_html=True)
+    # Scrollable history
+    st.markdown("<div id='mcp-history-area'>", unsafe_allow_html=True)
+    await draw_mcp_messages(amessage_iter(messages))
+    st.markdown("</div>", unsafe_allow_html=True)
+    # Sticky input area
+    st.markdown("<div id='mcp-input-area'>", unsafe_allow_html=True)
+    # Optional: quick actions based on selected tools; can be buttons or a selectbox
+    if selected_tools:
+        st.subheader("Quick Actions")
+        quick_actions = [(action, action) for action in build_quick_actions(selected_tools)]
+        action_choice = st.selectbox(
+            "Choose an action",
+            options=quick_actions,
+            format_func=lambda x: x[0],
+            key="mcp_action_choice",
+        )
+        if st.button("Execute", key="mcp_execute_action"):
+            with st.spinner("Processing…"):
+                await handle_quick_action(
+                    action_choice[1],
+                    mcp_client,
+                    selected_server,
+                    messages,
+                )
+    # Chat input tied to the selected server
+    if user_input := st.chat_input("Type your request..."):
+        if selected_server:
+            user_message = ChatMessage(type="human", content=user_input)
+            messages.append(user_message)
+            st.chat_message("human").write(user_input)
+            try:
                 with st.spinner("Processing…"):
-                    await handle_quick_action(
-                        quick_action[1],
+                    ai_response = await process_mcp_message(
+                        user_input,
                         mcp_client,
-                        st.session_state.selected_mcp_server,
+                        selected_server,
                         messages,
                     )
-        # Chat input remains the same but lives inside the sticky container
-        if user_input := st.chat_input("Type your request..."):
-            if st.session_state.selected_mcp_server:
-                user_message = ChatMessage(type="human", content=user_input)
-                messages.append(user_message)
-                st.chat_message("human").write(user_input)
-                try:
-                    with st.spinner("Processing…"):
-                        ai_response = await process_mcp_message(
-                            user_input,
-                            mcp_client,
-                            st.session_state.selected_mcp_server,
-                            messages,
-                        )
-                    ai_message = ChatMessage(type="ai", content=ai_response)
-                    messages.append(ai_message)
-                    st.chat_message("ai").write(ai_response)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error processing MCP request: {e}")
-                    st.stop()
-            else:
-                st.error("Please select an MCP server first!")
-        st.markdown("</div>", unsafe_allow_html=True)
+                ai_message = ChatMessage(type="ai", content=ai_response)
+                messages.append(ai_message)
+                st.chat_message("ai").write(ai_response)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error processing MCP request: {e}")
+                st.stop()
+        else:
+            st.error("Please select an MCP server first!")
+    st.markdown("</div>", unsafe_allow_html=True)  # close input area
+    st.markdown("</div>", unsafe_allow_html=True)  # close chat column
+    st.markdown("</div>", unsafe_allow_html=True)  # close main flex wrapper
