@@ -1,0 +1,44 @@
+name: "Filesystem Server"
+description: "File and directory operations"
+container_name: "agent-framework-mcp-filesystem-1"
+server_path: "/projects"
+icon: "📁"
+enabled: true
+client_class: "clients.filesystem_client.FilesystemClient"
+tools:
+  list_directory:
+    description: "List contents of a directory"
+    parameters:
+      path: "Directory path to list"
+  read_file:
+    description: "Read file contents"
+    parameters:
+      path: "File path"
+  write_file:
+    description: "Write content to a file"
+    parameters:
+      path: "File path"
+      content: "Content to write"
+  create_directory:
+    description: "Create a new directory"
+    parameters:
+      path: "Directory path"
+  move_file:
+    description: "Move file to a new location"
+    parameters:
+      source: "Source path"
+      destination: "Destination path"
+  get_file_info:
+    description: "Get metadata about a file"
+    parameters:
+      path: "File path"
+  search_files:
+    description: "Search for files by name"
+    parameters:
+      pattern: "Search pattern"
+      path: "Directory to search in"
+  directory_tree:
+    description: "List all subfolders and files"
+    parameters:
+      path: "Root path"
+      max_depth: "Maximum depth (optional)"

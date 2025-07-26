@@ -1,0 +1,1 @@
+# Plugin modules for MCP integration
